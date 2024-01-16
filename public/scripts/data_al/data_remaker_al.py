@@ -53,7 +53,7 @@ def pad_data(unpadded_data):
     return data_padded
 
 
-def crop_data(uncropped_data, region_num):
+def crop_data(uncropped_data, region_num, is_feature = False, is_conf = False, is_forest = False):
     
     output_path = "./cropped_al"
     if not os.path.exists(output_path):
@@ -77,6 +77,15 @@ def crop_data(uncropped_data, region_num):
     for y in range(0, vertial_patches):
         for x in range(0, horizontal_patches):
             new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
+
+            if is_feature:
+                new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
+            elif is_conf:
+                new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_label_conf.npy"
+            elif is_forest:
+                new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
+            else:
+                new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
             
             # print("new_name: ", new_name)
             
@@ -92,7 +101,7 @@ def crop_data(uncropped_data, region_num):
             
             np.save(os.path.join(output_path, new_name), patch)
 
-def crop_data_al(uncropped_data, filename, is_feature = False):
+def crop_data_al(uncropped_data, filename, is_feature = False, is_conf = False, is_forest = False):
     base_path = "./data_al/"
     output_path = base_path + "cropped_al"
     if not os.path.exists(output_path):
@@ -116,8 +125,17 @@ def crop_data_al(uncropped_data, filename, is_feature = False):
     for y in range(0, vertial_patches):
         for x in range(0, horizontal_patches):
             
+            # if is_feature:
+            #     new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
+            # else:
+            #     new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
+            
             if is_feature:
                 new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
+            elif is_conf:
+                new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label_conf.npy"
+            elif is_forest:
+                new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
             else:
                 new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
             
@@ -143,7 +161,7 @@ def make_data(label_data, region_num):
     padded_label = pad_data(label_data)
 
     ###########Crop data to SPATIAL_SIZE pathches######################################
-    crop_data_al(padded_label, label_file)
+    crop_data_al(padded_label, label_file, is_forest=True)
 
 
 def make_dir(TEST_REGION):

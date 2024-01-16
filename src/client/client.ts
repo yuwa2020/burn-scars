@@ -1313,7 +1313,7 @@ var texContext : CanvasRenderingContext2D
                                 mesh.position.set(0, 0, -100)
                                 scene.add(mesh)
 
-                                const predBuffer = await fetch('http://127.0.0.1:5005/pred').then(response => response.arrayBuffer());
+                                const predBuffer = await fetch(`http://127.0.0.1:5005/pred?initial=${1}`).then(response => response.arrayBuffer());
                                 console.log("arraybuffer: ", predBuffer)
 
                                 // Convert ArrayBuffer to base64

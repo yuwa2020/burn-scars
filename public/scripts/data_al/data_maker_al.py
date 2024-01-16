@@ -103,7 +103,7 @@ def crop_data(uncropped_data, filename, is_feature = False):
             if is_feature:
                 new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
             else:
-                new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
+                new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
             
             # print("new_name: ", new_name)
             
