@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "build": "webpack --config ./src/client/webpack.prod.js",
-    "dev": "webpack serve --config ./src/client/webpack.dev.js --port 4000",
+    "dev": "webpack serve --config ./src/client/webpack.dev.js --port 4040",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node ./public/server/server.js",
     "deploy": "gh-pages -d public"

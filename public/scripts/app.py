@@ -23,7 +23,7 @@ import subprocess, sys
 #     ttkScalarFieldSmoother
 # )
 
-from al import train
+from al import train, run_prediction
 
 
 app = Flask(__name__)
@@ -75,11 +75,14 @@ def stl():
 
 @app.route('/pred')
 def pred():
-    initial = int(request.args.get('initial', 0))
-    if initial:
-        payload = make_response(send_file('R1_forest.png'))
-    else:
-        payload = make_response(send_file('R1_pred_test.png'))
+    # initial = int(request.args.get('initial', 0))
+    # if initial:
+    #     payload = make_response(send_file('R1_forest.png'))
+    # else:
+    #     payload = make_response(send_file('R1_pred_test.png'))
+    TEST_REGION = 1 # TODO
+    run_prediction(TEST_REGION)
+    payload = make_response(send_file('R1_pred_test.png'))
     payload.headers.add('Access-Control-Allow-Origin', '*')
     return payload
 

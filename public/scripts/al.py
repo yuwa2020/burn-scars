@@ -71,7 +71,7 @@ def run_pred(model, data_loader):
         rgb_data = data_dict['rgb_data'].float().to(DEVICE)
 
         ## Data labels
-        labels = data_dict['labels_forest'].long().to(DEVICE)
+        labels = data_dict['labels_forest'].float().to(DEVICE)
 
         ## Get filename
         filename = data_dict['filename']
@@ -152,6 +152,40 @@ def stitch_patches_GT_labels(pred_patches_dict, TEST_REGION):
     
     return label_stitched, pred_stitched
 
+def stitch_patches_augmented(pred_patches_dict, TEST_REGION):
+    cropped_data_path = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
+    y_max, x_max = find_patch_meta(pred_patches_dict)
+
+    for i in range(y_max):
+        for j in range(x_max):
+            dict_key = f"Region_{TEST_REGION}_y_{i}_x_{j}_features.npy"
+
+            pred_patch = pred_patches_dict[dict_key]
+            pred_patch = np.transpose(pred_patch, (1, 2, 0))
+
+            rgb_patch = np.load(os.path.join(cropped_data_path, dict_key))[:, :, :3]
+
+            if j == 0:
+                rgb_x_patches = rgb_patch[config.EXTRA_PIXELS:config.SPATIAL_SIZE-config.EXTRA_PIXELS, config.EXTRA_PIXELS:config.SPATIAL_SIZE-config.EXTRA_PIXELS, :3]
+                pred_x_patches = pred_patch[config.EXTRA_PIXELS:config.SPATIAL_SIZE-config.EXTRA_PIXELS, config.EXTRA_PIXELS:config.SPATIAL_SIZE-config.EXTRA_PIXELS] # 4:124, 4:124
+            else:
+                rgb_x_patches = np.concatenate((rgb_x_patches, rgb_patch[config.EXTRA_PIXELS:config.SPATIAL_SIZE-config.EXTRA_PIXELS, config.EXTRA_PIXELS:config.SPATIAL_SIZE-config.EXTRA_PIXELS,:3]), axis = 1)
+                pred_x_patches = np.concatenate((pred_x_patches, pred_patch[config.EXTRA_PIXELS:config.SPATIAL_SIZE-config.EXTRA_PIXELS, config.EXTRA_PIXELS:config.SPATIAL_SIZE-config.EXTRA_PIXELS,:3]), axis = 1)
+
+        if i == 0:
+            rgb_y_patches = rgb_x_patches
+            pred_y_patches = pred_x_patches
+        else:
+            rgb_y_patches = np.vstack((rgb_y_patches, rgb_x_patches))
+            pred_y_patches = np.vstack((pred_y_patches, pred_x_patches))
+
+
+    rgb_stitched = rgb_y_patches.astype('uint8')
+    # pred_stitched = np.argmax(pred_y_patches, axis = -1)
+    pred_stitched = pred_y_patches.copy()
+
+    return rgb_stitched, pred_stitched
+
 def stitch_patches(pred_patches_dict, TEST_REGION):
     cropped_data_path = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
     y_max, x_max = find_patch_meta(pred_patches_dict)
@@ -192,32 +226,6 @@ def stitch_patches(pred_patches_dict, TEST_REGION):
     return rgb_stitched, pred_stitched
 
 def center_crop(stictched_data, original_height, original_width, image = False):
-    # dict_key = f"Region_{TEST_REGION}_Features7Channel.npy"
-    
-#     if image:
-    current_height, current_width = stictched_data.shape[0], stictched_data.shape[1]
-#     else:
-#         current_height, current_width = stictched_data.shape    
-#     print("current_height: ", current_height)
-#     print("current_width: ", current_width)
-    
-    # original_height = META_DATA[dict_key]['height']
-    # original_width = META_DATA[dict_key]['width']
-#     print("original_height: ", original_height)
-#     print("original_width: ", original_width)
-    
-    height_diff = current_height-original_height
-    width_diff = current_width-original_width
-    
-#     print("height_diff: ", height_diff)
-#     print("width_diff: ", width_diff)
-    
-    
-    cropped = stictched_data[height_diff//2:current_height-height_diff//2, width_diff//2: current_width-width_diff//2, :]
-    
-    return cropped
-
-def center_crop(stictched_data, original_height, original_width, image = False):
 
     current_height, current_width = stictched_data.shape[0], stictched_data.shape[1]
 
@@ -235,15 +243,7 @@ def center_crop_augmented(stictched_data, original_height, original_width, image
     height_diff = current_height-original_height
     width_diff = current_width-original_width
 
-    print(current_height, current_width)
-    print(original_height, original_width)
-    print(height_diff, width_diff)
-
-    # print("height_diff: ", height_diff)
-    # print("width_diff: ", width_diff)
-
     cropped = stictched_data[0:current_height-height_diff, 0:current_width-width_diff]
-#     cropped = stictched_data[height_diff//2:current_height-height_diff//2, width_diff//2: current_width-width_diff//2]
 
     return cropped
 
@@ -333,9 +333,9 @@ def train(TEST_REGION):
     except FileNotFoundError:
         resume_epoch = 0
 
-    model_path = f"./saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_Forest_{resume_epoch}.ckpt"
+    model_path = f"./saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
     if os.path.exists(model_path):
-        checkpoint = torch.load(model_path)
+        checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
         model.load_state_dict(checkpoint['model'])
         print(f"Resuming from epoch {resume_epoch}")
     # else:
@@ -380,7 +380,7 @@ def train(TEST_REGION):
             ## Data labels
             Elev Loss function label format: Flood = 1, Unknown = 0, Dry = -1 
             """
-            labels = data_dict['labels_forest'].long().to(DEVICE)
+            labels = data_dict['labels_forest'].float().to(DEVICE)
             labels.requires_grad = False  
 
             ## Get model prediction
@@ -388,7 +388,7 @@ def train(TEST_REGION):
 
             ## Backprop Loss
             optimizer.zero_grad()
-            loss = criterion.forward(pred, labels)
+            loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
 
             loss.backward()
             optimizer.step()
@@ -419,12 +419,12 @@ def train(TEST_REGION):
                 # elev_data = data_dict['elev_data'].float().to(DEVICE)
                 # norm_elev_data = data_dict['norm_elev_data'].float().to(DEVICE)
                 ## Data labels
-                labels = data_dict['labels_forest'].long().to(DEVICE)
+                labels = data_dict['labels_forest'].float().to(DEVICE)
 
                 ## Get model prediction
                 pred = model(rgb_data)
 
-                loss = criterion.forward(pred, labels)
+                loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
 
                 ## Record loss for batch
                 val_loss += loss.item()
@@ -448,7 +448,7 @@ def train(TEST_REGION):
                 torch.save({'epoch': epoch + 1,  # when resuming, we will start at the next epoch
                             'model': model.state_dict(),
                             'optimizer': optimizer.state_dict()}, 
-                            f"./saved_models_evanet/Region_{TEST_REGION}_TEST/saved_model_AL_{epoch+1}.ckpt")
+                            f"./saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{epoch+1}.ckpt")
     
     with open("./resume_epoch.txt", 'w') as file:
         file.write(str(resume_epoch))
@@ -488,10 +488,11 @@ def run_prediction(TEST_REGION):
     ######### Pixel Selection using Active Learning #######################
     model = UNet(config.IN_CHANNEL, config.N_CLASSES, ultrasmall = True).to(DEVICE)
     optimizer = SGD(model.parameters(), lr = 1e-7)
-    criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index = 0)
+    # criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index = 0)
+    criterion = torch.nn.MSELoss(reduction = 'sum')
     elev_eval = Evaluator()
 
-    model_path = f"./saved_models_evanet/Region_{TEST_REGION}_TEST/saved_model_AL_{resume_epoch}.ckpt"
+    model_path = f"./saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
     if os.path.exists(model_path):
         checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
         model.load_state_dict(checkpoint['model'])
@@ -505,30 +506,40 @@ def run_prediction(TEST_REGION):
     META_DATA = get_meta_data(DATASET_PATH)
     
     ## Run prediciton
-    # cropped_data_path = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
-    # test_dataset = get_dataset(cropped_data_path)
-
     cropped_data_path_al = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
     test_dataset = get_dataset_al(cropped_data_path_al, config.IN_CHANNEL)
 
     test_loader = DataLoader(test_dataset, batch_size = config.BATCH_SIZE)
 
     pred_patches_dict = run_pred(model, test_loader)
-    _, pred_stitched = stitch_patches(pred_patches_dict, TEST_REGION)
+
+    rgb_stitched, pred_stitched = stitch_patches_augmented(pred_patches_dict, TEST_REGION)
     pred_unpadded = center_crop_augmented(pred_stitched, height, width, image = False)
 
-    pred_unpadded = np.argmax(pred_unpadded, axis = -1)
+    pred_unpadded = pred_unpadded[:,:,0]
 
-    forest = np.where(pred_unpadded == 1, 1, 0)
-    not_forest = np.where(pred_unpadded == 0, 1, 0)
+    forest = np.where(pred_unpadded < 0.5, 1, 0)
+    not_forest = np.where(pred_unpadded >= 0.5, 1, 0)
 
     forest = np.expand_dims(forest, axis=-1)
     not_forest = np.expand_dims(not_forest, axis=-1)
 
     forest = forest*np.array([ [ [0, 255, 0] ] ])
     not_forest = not_forest*np.array([ [ [0, 0, 255] ] ])
-
     pred_labels = (forest + not_forest).astype('uint8')
+
+    # pred_unpadded = np.argmax(pred_unpadded, axis = -1)
+
+    # forest = np.where(pred_unpadded == 1, 1, 0)
+    # not_forest = np.where(pred_unpadded == 0, 1, 0)
+
+    # forest = np.expand_dims(forest, axis=-1)
+    # not_forest = np.expand_dims(not_forest, axis=-1)
+
+    # forest = forest*np.array([ [ [0, 255, 0] ] ])
+    # not_forest = not_forest*np.array([ [ [0, 0, 255] ] ])
+
+    # pred_labels = (forest + not_forest).astype('uint8')
 
     pim = Image.fromarray(pred_labels)
     pim.convert('RGB').save("./R1_pred_test.png")

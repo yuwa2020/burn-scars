@@ -52,6 +52,110 @@ def pad_data(unpadded_data):
     
     return data_padded
 
+def pad_data_augment(unpadded_data, is_feature = False):
+    
+    height = unpadded_data.shape[0]
+    width = unpadded_data.shape[1]
+    
+#     print("height: ", height)
+#     print("width: ", width)
+    CENTER_SIZE = SPATIAL_SIZE - (EXTRA_PIXELS*2)
+
+    complete_patches_x = width//CENTER_SIZE
+    complete_patches_y = height//CENTER_SIZE
+    
+    rem_pixels_x = width - (complete_patches_x * CENTER_SIZE)
+    rem_pixels_y = height - (complete_patches_y * CENTER_SIZE)
+    
+    print(complete_patches_x, complete_patches_y)
+    print(rem_pixels_x, rem_pixels_y)
+    
+    left = EXTRA_PIXELS
+    right = EXTRA_PIXELS
+    top = EXTRA_PIXELS
+    bottom = EXTRA_PIXELS
+    
+    extra_x = False
+    extra_y = False
+    
+    total_patches_x = complete_patches_x
+    total_patches_y = complete_patches_y
+    if rem_pixels_x > 0:
+        right = SPATIAL_SIZE - rem_pixels_x - EXTRA_PIXELS
+        total_patches_x += 1
+        extra_x = True
+    
+    if rem_pixels_y > 0:
+        bottom = SPATIAL_SIZE - rem_pixels_y - EXTRA_PIXELS
+        total_patches_y += 1
+        extra_y = True
+    
+    new_width = left + width + right
+    new_height = top + height + bottom
+    
+    print(new_width, new_height)
+        
+    if is_feature:
+        data_padded = np.pad(unpadded_data, pad_width = ((top, bottom),(left, right), (0, 0)), mode = 'reflect')
+        
+#         plt.figure(figsize=(10,10))
+#         plt.imshow(data_padded[:,:,:3].astype('int'))
+    else:
+        data_padded = np.pad(unpadded_data, pad_width = ((top, bottom), (left, right)), mode = 'reflect')
+        
+#     assert data_padded.shape[0]%SPATIAL_SIZE == 0, f"Padded height must be multiple of SPATIAL_SIZE: {SPATIAL_SIZE}"
+#     assert data_padded.shape[1]%SPATIAL_SIZE == 0, f"Padded width must be multiple of SPATIAL_SIZE: {SPATIAL_SIZE}"
+        
+#     print("data_padded: ", data_padded.shape, "\n")
+    return data_padded, total_patches_x, total_patches_y
+
+def crop_data_augment(uncropped_data, filename, horizontal_patches, vertial_patches, is_feature = False, is_conf = False, is_forest = False):
+
+    # base_path = "./data_al/"
+    output_path = "./cropped_al"
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    
+    height = uncropped_data.shape[0]
+    width = uncropped_data.shape[1]
+
+    print(f"height: {height} width: {width} ")
+    print("spatial size: ", SPATIAL_SIZE)
+
+    print("VP: ", vertial_patches)
+    print("HP: ", horizontal_patches)
+    
+    cropped_data = []
+    
+    x_start = 0
+    y_start = 0
+    
+    for y in range(0, vertial_patches):
+        for x in range(0, horizontal_patches):
+            
+            if is_feature:
+                new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
+            elif is_conf:
+                new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label_conf.npy"
+            elif is_forest:
+                new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
+            else:
+                new_name = filename[:8]+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
+            
+            x_end = x_start + SPATIAL_SIZE
+            y_end = y_start + SPATIAL_SIZE
+            
+            patch = uncropped_data[y_start: y_end, x_start:x_end]
+            
+            np.save(os.path.join(output_path, new_name), patch)
+            
+            # for next patch
+            # x_start = x_start + SPATIAL_SIZE - (EXTRA_PIXELS*2)
+            x_start = x_start + SPATIAL_SIZE - (EXTRA_PIXELS*2)
+        x_start = 0
+        # y_start = y_start + SPATIAL_SIZE - (EXTRA_PIXELS*2)
+        y_start = y_start + SPATIAL_SIZE - (EXTRA_PIXELS*2)
+
 
 def crop_data(uncropped_data, region_num, is_feature = False, is_conf = False, is_forest = False):
     
@@ -156,12 +260,12 @@ def crop_data_al(uncropped_data, filename, is_feature = False, is_conf = False, 
             
 def make_data(label_data, region_num):
     label_file = f"Region_{region_num}_labels.npy"
-    
-    # ###########Padd data to fit SPATIAL_SIZE pathches######################################
-    padded_label = pad_data(label_data)
+
+    ###########Padd data to fit SPATIAL_SIZE pathches######################################
+    padded_label, hor_patches, ver_patches = pad_data_augment(label_data)
 
     ###########Crop data to SPATIAL_SIZE pathches######################################
-    crop_data_al(padded_label, label_file, is_forest=True)
+    cropped_label = crop_data_augment(padded_label, label_file, hor_patches, ver_patches, is_forest=True)
 
 
 def make_dir(TEST_REGION):
