@@ -315,13 +315,14 @@ def ann_to_labels(png_image):
 
 def train(TEST_REGION):
     print("Retraining the Model with new labels")
-    time.sleep(5)
-    return # TODO: remove after test
+    # time.sleep(5)
+    # return # TODO: remove after test
 
 
     model = UNet(config.IN_CHANNEL, config.N_CLASSES, ultrasmall = True).to(DEVICE)
     optimizer = SGD(model.parameters(), lr = 1e-7)
-    criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index = 0)
+    # criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index = 0)
+    criterion = torch.nn.MSELoss(reduction = 'sum')
     elev_eval = Evaluator()
 
     # read resume epoch from text file if exists
@@ -418,7 +419,7 @@ def train(TEST_REGION):
                 # elev_data = data_dict['elev_data'].float().to(DEVICE)
                 # norm_elev_data = data_dict['norm_elev_data'].float().to(DEVICE)
                 ## Data labels
-                labels = data_dict['labels'].long().to(DEVICE)
+                labels = data_dict['labels_forest'].long().to(DEVICE)
 
                 ## Get model prediction
                 pred = model(rgb_data)

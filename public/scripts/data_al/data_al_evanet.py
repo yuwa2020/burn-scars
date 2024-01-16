@@ -64,9 +64,9 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
         self.feature_data = np.load(os.path.join(self.data_path, self.feature_file))
         
         ## Get the corresponding label
-        self.label_file = re.sub("features", "label", self.feature_file)
-        ##print("file_name: ", self.label_file)
-        self.label_data = np.load(os.path.join(self.data_path, self.label_file)).astype('int')
+        # self.label_file = re.sub("features", "label", self.feature_file)
+        # ##print("file_name: ", self.label_file)
+        # self.label_data = np.load(os.path.join(self.data_path, self.label_file)).astype('int')
 
         # ## Get the corresponding label for conf score (rejection model)
         # self.label_file_conf = re.sub("features", "label_conf", self.feature_file)
@@ -74,14 +74,13 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
         
         ## Get the corresponding label for forests (forest model)
         self.label_file_forest = re.sub("features", "label_forest", self.feature_file)
-        self.label_data_forest = np.load(os.path.join(self.data_path, self.label_file_forest)).astype('int')
+        self.label_data_forest = np.load(os.path.join(self.data_path, self.label_file_forest)).astype('float32')
         
         
         ## Seperate elevation data from RGB
         self.disaster_rgb = self.feature_data[:,:, :3].astype('uint8')
         self.elev_data = self.feature_data[:,:, 3].astype('float32')
         self.elev_data = np.expand_dims(self.elev_data, -1).astype('float32')
-        # print("self.elev_data: ", self.elev_data.shape)
         self.regular_rgb = self.feature_data[:,:, 4:].astype('uint8')
         
         
@@ -98,13 +97,22 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
         
         
         ### For testing labels with CE loss 0: Unknown, 1: Flood, 2: Dry
-        self.formatted_label_data = np.where(self.label_data == 0, 2, self.label_data).astype('int')
-        self.formatted_label_data = np.where(self.label_data == -1, 0, self.formatted_label_data).astype('int')
+        # self.formatted_label_data = np.where(self.label_data == 0, 2, self.label_data).astype('int')
+        # self.formatted_label_data = np.where(self.label_data == -1, 0, self.formatted_label_data).astype('int')
         
-        ### For testing labels with CE loss 0: Unknown, 1: Forest, 2: Not Forest
-        self.formatted_label_data_forest = np.where(self.label_data_forest == -1, 2, self.label_data_forest).astype('int')
-#         self.formatted_label_data_forest = np.where(self.label_data_forest == -1, 0, self.formatted_label_data).astype('int')
-        
+        ### For testing labels with MSE loss 
+        # from frontend: 1: forest, -1: not forest, 0: unknown
+        # required: 0: forest, 1: not forest, 0.5: unknown
+        forest = np.where(self.label_data_forest == 1, -10, 0)
+        not_forest = np.where(self.label_data_forest == -1, -11, 0)
+        unk = np.where(self.label_data_forest == 0, -12, 0)
+        self.formatted_label_data_forest = forest + not_forest + unk
+
+        self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -10, 0, self.formatted_label_data_forest).astype('float32')
+        self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -11, 1, self.formatted_label_data_forest).astype('float32')
+        self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -12, 0.5, self.formatted_label_data_forest).astype('float32')
+
+        # self.formatted_label_data_forest = np.where(self.label_data_forest == -1, 2, self.label_data_forest).astype('int')
         
         ## Merge Disaster and regular time RGB
         self.rgb_data = self.disaster_rgb
@@ -140,7 +148,7 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
         self.data_dict['rgb_data'] = self.transformed_rbg
         self.data_dict['elev_data'] = self.elev_data
         self.data_dict['norm_elev_data'] = self.norm_elev_data
-        self.data_dict['labels'] = self.formatted_label_data
+        # self.data_dict['labels'] = self.formatted_label_data
         # self.data_dict['labels_conf'] = self.label_data_conf
         self.data_dict['labels_forest'] = self.formatted_label_data_forest
         
