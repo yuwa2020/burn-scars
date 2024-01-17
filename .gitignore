@@ -163,3 +163,4 @@ cython_debug/
 *.tiff
 *.png
 *.ckpt
+a.stl
