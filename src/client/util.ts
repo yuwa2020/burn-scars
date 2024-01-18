@@ -17,6 +17,7 @@ import {
     gui,
     disposeUniform,
     annCanvas,
+    labelsCanvas,
     arrayBufferToBase64,
     superpixelContext,
     superpixelTexture,
@@ -24,11 +25,13 @@ import {
     predCanvas,
     predictionTexture,
     predContext,
+    labelsContext,
     confidenceCanvas,
     confidenceTexture,
     confidenceContext,
     context,
-    annotationTexture
+    forestMapTexture, 
+    labelsTexture
 } from './client'
 import { terrainDimensions } from './constants'
 import * as JSZip from 'jszip'
@@ -408,7 +411,7 @@ function downloadPredictionSession(event: Event) {
         if (sessionData.name == null || sessionData.name == '') {
             sessionData.name = 'anonymous'
         }
-        link.download = sessionData.name + '-annotation'
+        link.download = sessionData.name + '-forestMap'
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
@@ -474,7 +477,7 @@ async function pollBackendTask(taskId: string) {
         console.log('Backend task completed:', data.result);
 
         // context!.clearRect(0, 0, annCanvas.width, annCanvas.height);
-        // annotationTexture.needsUpdate = true;
+        // forestMapTexture.needsUpdate = true;
   
         // Continue with other actions on the frontend
         const superpixelBuffer = await fetch(`http://127.0.0.1:5005/superpixel?recommend=${0}`).then(response => response.arrayBuffer());
@@ -670,29 +673,26 @@ function doubleClickHandler(event: MouseEvent) {
 
 function toggleAnnoation() {
     var ul_button = document.createElement('ul')
-    var li = document.createElement('li')
-    li.classList.add('customList', 'outList')
-    // let span = document.createElement('span')
-    // span.classList.add('property-name')
-    // span.innerHTML = 'Annotate'
-    // li.appendChild(span)
-    let div = document.createElement('div')
-    div.classList.add('btn-group', 'btn-group-toggle')
-    button1 = document.createElement('button')
-    button1.classList.add('ci', 'btn', 'active')
-    button1.setAttribute('data-myid', 'flood')
-    button1.innerHTML = 'FOREST'
-    button2 = document.createElement('button')
-    button2.classList.add('ci', 'btn')
-    button2.setAttribute('data-myid', 'dry')
-    button2.innerHTML = 'NOT FOREST'
-    div.appendChild(button1)
-    div.appendChild(button2)
-    li.appendChild(div)
-    button1.addEventListener('click', setActiveButton)
-    button2.addEventListener('click', setActiveButton)
-    ul_button.appendChild(li)
-    // document.body.appendChild(li)
+
+    // var li = document.createElement('li')
+    // li.classList.add('customList', 'outList')
+    // let div = document.createElement('div')
+    // div.classList.add('btn-group', 'btn-group-toggle')
+    // button1 = document.createElement('button')
+    // button1.classList.add('ci', 'btn', 'active')
+    // button1.setAttribute('data-myid', 'flood')
+    // button1.innerHTML = 'FOREST'
+    // button2 = document.createElement('button')
+    // button2.classList.add('ci', 'btn')
+    // button2.setAttribute('data-myid', 'dry')
+    // button2.innerHTML = 'NOT FOREST'
+    // div.appendChild(button1)
+    // div.appendChild(button2)
+    // li.appendChild(div)
+    // button1.addEventListener('click', setActiveButton)
+    // button2.addEventListener('click', setActiveButton)
+    // ul_button.appendChild(li)
+
     var li2 = document.createElement('li')
     li2.classList.add('customList', 'outList2')
     let div2 = document.createElement('div')
@@ -720,23 +720,23 @@ function updateUniform(input: any) {
     })
 }
 
-function setActiveButton(event: MouseEvent) {
-    event.preventDefault()
-    button1.classList.remove('active')
-    button2.classList.remove('active')
-    ;(event.target as HTMLButtonElement).classList.add('active')
-    type ObjectKeyParams = keyof typeof params
-    let myId = (event.target as HTMLButtonElement).dataset.myid as ObjectKeyParams
-    params['dry'] = false
-    params['flood'] = false
-    // params[myId] = true
-    if (myId == 'flood') {
-        params['flood'] = true
-    } else {
-        params['dry'] = true
-    }
-    updateUniform(['dry', 'flood'])
-}
+// function setActiveButton(event: MouseEvent) {
+//     event.preventDefault()
+//     button1.classList.remove('active')
+//     button2.classList.remove('active')
+//     ;(event.target as HTMLButtonElement).classList.add('active')
+//     type ObjectKeyParams = keyof typeof params
+//     let myId = (event.target as HTMLButtonElement).dataset.myid as ObjectKeyParams
+//     params['dry'] = false
+//     params['flood'] = false
+//     // params[myId] = true
+//     if (myId == 'flood') {
+//         params['flood'] = true
+//     } else {
+//         params['dry'] = true
+//     }
+//     updateUniform(['dry', 'flood'])
+// }
 
 function setActiveButton2(event: MouseEvent) {
     event.preventDefault()
@@ -829,10 +829,11 @@ function disposeNode(node: any) {
         if (node.material) {
             for (let key in node.material.uniforms) {
                 if (
-                    key == 'annotationTexture' ||
+                    key == 'forestMapTexture' ||
                     key == 'colormap' ||
                     key == 'diffuseTexture' ||
                     key == 'persTexture' ||
+                    key == 'labelsTexture' ||
                     key == 'predictionTexture' || // saugat
                     key == 'superpixelTexture' || // saugat
                     key == 'confidenceTexture' // saugat

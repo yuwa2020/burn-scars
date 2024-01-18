@@ -181,10 +181,10 @@ const persLoader = new THREE.TextureLoader()
                 image.onload = function() {
                     if (image.width == regionDimensions[0] && image.height == regionDimensions[1]) {
                         context!.drawImage(image, 0, 0)
-                        annotationTexture.needsUpdate = true
+                        forestMapTexture.needsUpdate = true
                         // predictionTexture.needsUpdate = true // saugat
                     } else {
-                        alert("Wrong dimensions for annotation image, check that the region is correct")
+                        alert("Wrong dimensions for forestMap image, check that the region is correct")
                     }
                     ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
                     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
@@ -265,6 +265,7 @@ controls.minAzimuthAngle = -0.65
 var canvas = document.createElement('canvas')
 var annCanvas = document.createElement('canvas')
 var predCanvas = document.createElement('canvas')
+var labelsCanvas = document.createElement('canvas')
 var superpixelCanvas = document.createElement('canvas')
 var confidenceCanvas = document.createElement('canvas')
 
@@ -272,7 +273,9 @@ var context : CanvasRenderingContext2D
 var predContext : CanvasRenderingContext2D
 var superpixelContext: CanvasRenderingContext2D
 var confidenceContext: CanvasRenderingContext2D
-var annotationTexture : THREE.Texture
+var labelsContext: CanvasRenderingContext2D
+var forestMapTexture : THREE.Texture
+var labelsTexture : THREE.Texture
 
 var predictionTexture: THREE.Texture // saugat
 var superpixelTexture: THREE.Texture // saugat
@@ -282,19 +285,20 @@ const gui = new GUI({ width: window.innerWidth / 5 })
 var params = {
     blur: 0,
     dimension: metaState.flat == 0,
-    annotation: true,
+    forestMap: true,
     brushSize: 8,
     pers: 6,
     persShow: false,
     data: false,
     guide: 0,
-    flood: true,
-    dry: false,
+    forest: true,
+    not_forest: false,
     clear: false,
     prediction: false, // saugat
     superpixel: false, // saugat
+    labels: false, // saugat
     confidence: false, // saugat
-    predictionKey: 0, // saugat
+    forestMapKey: 0, // saugat
     superpixelKey: 0, // saugat
 }
 let persIndex: { [key: number]: number } = {
@@ -311,18 +315,20 @@ var persVal = persIndex[params.pers]
 var uniforms = {
     z: { value: metaState.flat == 0 ? 500 : 0 },
     diffuseTexture: { type: 't', value: new THREE.Texture() },
-    annotationTexture: { type: 't', value: new THREE.Texture() },
+    forestMapTexture: { type: 't', value: new THREE.Texture() },
     predictionTexture: { type: 't', value: new THREE.Texture() },
     superpixelTexture: { type: 't', value: new THREE.Texture() },
     confidenceTexture: { type: 't', value: new THREE.Texture() },
+    labelsTexture: { type: 't', value: new THREE.Texture() },
     dataTexture: { type: 't', value: new THREE.Texture() },
     persTexture: { type: 't', value: new THREE.Texture() },
     colormap: { type: 't', value: new THREE.Texture() },
-    annotation: { value: 1 },
+    forestMap: { value: 1 },
     prediction: {value: 0},
     superpixel: {value: 0},
     confidence: {value: 0},
-    predictionKey: {value: 0},
+    labels: {value: 0},
+    forestMapKey: {value: 0},
     superpixelKey: {value: 0},
     data: { value: 0 },
     segsMax: { type: 'f', value: 0 },
@@ -330,8 +336,8 @@ var uniforms = {
     hoverValue: { type: 'f', value: 0 },
     guide: { value: params.guide },
     dimensions: { type: 'vec2', value: [100, 100] },
-    dry: { type: 'bool', value: params.dry },
-    flood: { type: 'bool', value: params.flood },
+    not_forest: { type: 'bool', value: params.not_forest },
+    forest: { type: 'bool', value: params.forest },
     quadrant: { value: metaState.quadrant },
 }
 const viewFolder = gui.addFolder('Settings')
@@ -367,16 +373,7 @@ if (metaState.flat == 0) {
         .name('3D View')
 }
 
-viewFolder
-    .add(params, 'annotation')
-    .onChange(() => {
-        if (params.annotation) {
-            uniforms.annotation.value = 1
-        } else {
-            uniforms.annotation.value = 0
-        }
-    })
-    .name('Show Annotation')
+
 // saugat
 viewFolder
 .add(params, 'prediction')
@@ -389,6 +386,28 @@ viewFolder
 })
 .name('Show Prediction')
 //saugat
+
+viewFolder
+    .add(params, 'forestMap')
+    .onChange(() => {
+        if (params.forestMap) {
+            uniforms.forestMap.value = 1
+        } else {
+            uniforms.forestMap.value = 0
+        }
+    })
+    .name('Show Forest Map')
+
+viewFolder
+    .add(params, 'labels')
+    .onChange(() => {
+        if (params.labels) {
+            uniforms.labels.value = 1
+        } else {
+            uniforms.labels.value = 0
+        }
+    })
+    .name('Show Labels')
 
 
 let sizeMap = {
@@ -536,7 +555,7 @@ function segSelect(x: number, y: number, color: string) {
             sessionData.annotatedPixelCount++
         }
     }
-    annotationTexture.needsUpdate = true
+    forestMapTexture.needsUpdate = true
     // predictionTexture.needsUpdate = true // saugat
 }
 
@@ -695,8 +714,8 @@ function BFS(x: number, y: number, direction: string, color: string) {
             }
         }
     }
-    annotationTexture.needsUpdate = true
-    // uniforms.annotationTexture.value = annotationTexture;
+    forestMapTexture.needsUpdate = true
+    // uniforms.forestMapTexture.value = forestMapTexture;
 }
 
 function fpart(x: number) {
@@ -746,8 +765,8 @@ function buttonPressHandlerSuperpixel() {
 }
 
 function buttonPressHandlerPrediction() {
-    params.predictionKey = 1
-    uniforms.predictionKey.value = params.predictionKey
+    params.forestMapKey = 1
+    uniforms.forestMapKey.value = params.forestMapKey
 }
 
 function BFSHandler(x: number, y: number, flood: boolean, clear: boolean) {
@@ -766,14 +785,29 @@ function BFSHandler(x: number, y: number, flood: boolean, clear: boolean) {
     logMyState('f', 'BFS', flood, clear, camera, pointer, x, y, undefined, undefined, time)
 }
 
-function brushHandler(key: string, x: number, y: number, flood: boolean, clear: boolean) {
+function brushHandler(key: string, x: number, y: number, forest: boolean, clear: boolean) { // flood means forest, dry means not forest
     sessionData.numberofClick++
-    context!.fillStyle = 'blue'
-    if (flood) {
-        context!.fillStyle = 'green'
+    // context!.fillStyle = 'blue'
+    // if (forest) {
+    //     context!.fillStyle = 'green'
+    // }
+    context!.fillStyle = 'green'
+    labelsContext!.fillStyle = 'green'
+    if (clear){
+        labelsContext!.fillStyle = 'blue'
     }
+
     if (clear) {
         context!.clearRect(
+            x - Math.floor(params.brushSize / 2),
+            y - Math.floor(params.brushSize / 2),
+            params.brushSize,
+            params.brushSize
+        )
+
+        // translate to labels canvas
+        // labelsContext!.fillStyle = 'blue'
+        labelsContext!.fillRect(
             x - Math.floor(params.brushSize / 2),
             y - Math.floor(params.brushSize / 2),
             params.brushSize,
@@ -787,20 +821,36 @@ function brushHandler(key: string, x: number, y: number, flood: boolean, clear: 
             params.brushSize,
             params.brushSize
         )
+
+        // translate to labels canvas
+        // labelsContext!.fillStyle = 'green'
+        labelsContext!.fillRect(
+            x - Math.floor(params.brushSize / 2),
+            y - Math.floor(params.brushSize / 2),
+            params.brushSize,
+            params.brushSize
+        )
         sessionData.annotatedPixelCount += params.brushSize * params.brushSize
     }
-    annotationTexture.needsUpdate = true
+    forestMapTexture.needsUpdate = true
+    labelsTexture.needsUpdate = true
     // predictionTexture.needsUpdate = true // saugat
-    // uniforms.annotationTexture.value = annotationTexture
-    logMyState(key, 'brush', flood, clear, camera, pointer, x, y, params.brushSize, undefined, time)
+    // uniforms.forestMapTexture.value = forestMapTexture
+    logMyState(key, 'brush', forest, clear, camera, pointer, x, y, params.brushSize, undefined, time)
 }
 
 function brushLineHandler(linePixels: Array<number>, flood: boolean, clear: boolean) {
     sessionData.numberofClick++
-    context!.fillStyle = 'blue'
-    if (flood) {
-        context!.fillStyle = 'green'
+    // context!.fillStyle = 'blue'
+    // if (forest) {
+    //     context!.fillStyle = 'green'
+    // }
+    context!.fillStyle = 'green'
+    labelsContext!.fillStyle = 'green'
+    if (clear){
+        labelsContext!.fillStyle = 'blue'
     }
+
     for (var i = 0; i < linePixels.length; i += 2) {
         if (clear) {
             context!.clearRect(
@@ -809,6 +859,16 @@ function brushLineHandler(linePixels: Array<number>, flood: boolean, clear: bool
                 params.brushSize,
                 params.brushSize
             )
+
+            // // translate to labels canvas
+            // labelsContext!.fillStyle = 'blue'
+            labelsContext!.fillRect(
+                linePixels[i] - Math.floor(params.brushSize / 2),
+                regionDimensions[1] - 1 - linePixels[i + 1] - Math.floor(params.brushSize / 2),
+                params.brushSize,
+                params.brushSize
+            )
+            
             sessionData.annotatedPixelCount -= params.brushSize * params.brushSize
         } else {
             context!.fillRect(
@@ -817,10 +877,20 @@ function brushLineHandler(linePixels: Array<number>, flood: boolean, clear: bool
                 params.brushSize,
                 params.brushSize
             )
+
+            // // translate to labels canvas
+            // labelsContext!.fillStyle = 'green'
+            labelsContext!.fillRect(
+                linePixels[i] - Math.floor(params.brushSize / 2),
+                regionDimensions[1] - 1 - linePixels[i + 1] - Math.floor(params.brushSize / 2),
+                params.brushSize,
+                params.brushSize
+            )
             sessionData.annotatedPixelCount += params.brushSize * params.brushSize
         }
     }
-    annotationTexture.needsUpdate = true
+    forestMapTexture.needsUpdate = true
+    labelsTexture.needsUpdate = true
     // predictionTexture.needsUpdate = true // saugat
     logMyState(
         't',
@@ -866,7 +936,7 @@ function polygonSelectionHandler(x: number, y: number, flood: boolean, clear: bo
         undefined,
         time
     )
-    annotationTexture.needsUpdate = true
+    forestMapTexture.needsUpdate = true
 }
 
 function polygonFillHandler(flood: boolean, clear: boolean, linePoints?: Array<number>) {
@@ -981,7 +1051,7 @@ function polygonFillHandler(flood: boolean, clear: boolean, linePoints?: Array<n
         time
     )
     polyPoints = []
-    annotationTexture.needsUpdate = true
+    forestMapTexture.needsUpdate = true
     // predictionTexture.needsUpdate = true // saugat
 }
 
@@ -1151,11 +1221,11 @@ const onKeyPress = (event: KeyboardEvent) => {
                         intery = intery + gradient
                     }
                 }
-                brushLineHandler(linePixels, params.flood, params.clear)
+                brushLineHandler(linePixels, params.forest, params.clear)
             }
             lastX = x
             lastY = y
-            brushHandler('t', x, regionDimensions[1] - 1 - y, params.flood, params.clear)
+            brushHandler('t', x, regionDimensions[1] - 1 - y, params.forest, params.clear)
         }
     } 
     // else if (event.key == 'p' && metaState.polygonSelection) {
@@ -1197,8 +1267,8 @@ const onKeyUp = (event: KeyboardEvent) => {
         uniforms.superpixelKey.value = params.superpixelKey
     }
     else if (event.key == 'Enter'){
-        params.predictionKey = 0
-        uniforms.predictionKey.value = params.predictionKey
+        params.forestMapKey = 0
+        uniforms.forestMapKey.value = params.forestMapKey
     }
 }
 
@@ -1257,16 +1327,22 @@ var texContext : CanvasRenderingContext2D
                     confidenceContext = confidenceCanvas.getContext('2d')!
 
                     context = annCanvas.getContext('2d')!
+                    
+                    labelsCanvas.width = image.width
+                    labelsCanvas.height = image.height
+                    labelsContext = labelsCanvas.getContext('2d')!
 
-                    annotationTexture = new THREE.Texture(annCanvas)
+                    forestMapTexture = new THREE.Texture(annCanvas)
+                    labelsTexture = new THREE.Texture(labelsCanvas)
 
                     predictionTexture = new THREE.Texture(predCanvas) // saugat
                     superpixelTexture = new THREE.Texture(superpixelCanvas) // saugat
                     confidenceTexture = new THREE.Texture(confidenceCanvas) // saugat
 
                     uniforms.diffuseTexture.value = diffuseTexture
-                    uniforms.annotationTexture.value = annotationTexture
+                    uniforms.forestMapTexture.value = forestMapTexture
                     uniforms.predictionTexture.value = predictionTexture // saugat
+                    uniforms.labelsTexture.value = labelsTexture
                     uniforms.superpixelTexture.value = superpixelTexture // saugat
                     uniforms.confidenceTexture.value = confidenceTexture // saugat
                     const meshMaterial = new THREE.RawShaderMaterial({
@@ -1284,7 +1360,7 @@ var texContext : CanvasRenderingContext2D
                         data = {0: temp}
                     }
                     diffuseTexture.needsUpdate = true
-                    annotationTexture.needsUpdate = true
+                    forestMapTexture.needsUpdate = true
                     // predictionTexture.needsUpdate = true // saugat
                     uniforms.dimensions.value = [image.width, image.height]
                     var formData = new FormData();
@@ -1321,9 +1397,11 @@ var texContext : CanvasRenderingContext2D
 
                                 // Create an Image element
                                 const imgPred = new Image();
+                                const imgForest = new Image();
 
                                 // Set the source of the Image to the base64-encoded PNG data
                                 imgPred.src = 'data:image/png;base64,' + base64ImagePred;
+                                imgForest.src = 'data:image/png;base64,' + base64ImagePred;
 
                                 // Wait for the image to load
                                 imgPred.onload = () => {
@@ -1338,9 +1416,20 @@ var texContext : CanvasRenderingContext2D
                                     // Draw the image on the canvas
                                     predContext!.drawImage(imgPred, 0, 0);
                                     predictionTexture.needsUpdate = true // saugat
+                                };
 
-                                    // // Add the canvas to the document or perform other actions
-                                    // document.body.appendChild(predCanvas);
+                                // Wait for the image to load
+                                imgForest.onload = () => {
+
+                                    // Set canvas dimensions to match the image dimensions
+                                    annCanvas.width = imgForest.width;
+                                    annCanvas.height = imgForest.height;
+
+                                    console.log("height: ", annCanvas.height)
+                                    console.log("width: ", annCanvas.width)
+
+                                    context!.drawImage(imgForest, 0, 0);
+                                    forestMapTexture.needsUpdate = true
                                 };
 
                                 
@@ -1555,11 +1644,14 @@ export {
     superpixelTexture,
     superpixelCanvas,
     predCanvas,
+    labelsCanvas,
     predictionTexture,
     predContext,
+    labelsContext,
     confidenceCanvas,
     confidenceTexture,
     confidenceContext,
-    context, // for annotation
-    annotationTexture,
+    context, // for forestMap
+    forestMapTexture,
+    labelsTexture,
 }

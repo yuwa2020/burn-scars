@@ -77,7 +77,7 @@ def stl():
 def pred():
     initial = int(request.args.get('initial', 0))
     if initial:
-        payload = make_response(send_file('R1_forest_new.png'))
+        payload = make_response(send_file('R1_forest.png'))
     # else:
     #     payload = make_response(send_file('R1_pred_test.png'))
     else:

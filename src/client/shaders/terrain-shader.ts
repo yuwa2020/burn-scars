@@ -32,14 +32,18 @@ uniform mat4 modelViewMatrix;
 uniform vec3 cameraPosition;
 uniform sampler2D diffuseTexture;
 uniform sampler2D dataTexture;
-uniform sampler2D annotationTexture;
+
 uniform sampler2D predictionTexture;
+uniform sampler2D forestMapTexture;
+uniform sampler2D labelsTexture;
+
 uniform sampler2D superpixelTexture;
 uniform sampler2D confidenceTexture;
 uniform sampler2D persTexture;
 uniform sampler2D colormap;
-uniform int annotation;
 uniform int prediction;
+uniform int forestMap;
+uniform int labels;
 uniform int superpixel;
 uniform int confidence;
 uniform int persShow;
@@ -53,7 +57,7 @@ uniform int z;
 uniform vec2 dimensions;
 uniform int quadrant;
 uniform int superpixelKey;
-uniform int predictionKey;
+uniform int forestMapKey;
 
 in vec3 vNormal;
 in vec3 vPosition;
@@ -125,29 +129,38 @@ void main(){
           }
        }
 
+    if (labels == 1){
+      vec3 lColor = sampleTexture(labelsTexture, vPosition.xy).rgb;
+      out_FragColor = vec4(color + lColor, 1.0);
+    }
 
-
-    if (prediction == 1 || predictionKey == 1){
-      vec3 pColor = sampleTexture(predictionTexture, vPosition.xy).rgb;
+    else if (forestMap == 1 || forestMapKey == 1){
+      vec3 fColor = sampleTexture(forestMapTexture, vPosition.xy).rgb;
+      out_FragColor = vec4(color + fColor, 1.0);
       
-      if (annotation == 1){
-        vec3 aColor = sampleTexture(annotationTexture, vPosition.xy).rgb;
-        out_FragColor = vec4(color + aColor + pColor, 1.0);
-      } else {
-        out_FragColor = vec4(color + pColor, 1.0);
-      }
+      // if (prediction == 1){
+      //   vec3 pColor = sampleTexture(predictionTexture, vPosition.xy).rgb;
+      //   out_FragColor = vec4(color + pColor + fColor, 1.0);
+      // } else {
+      //   out_FragColor = vec4(color + fColor, 1.0);
+      // }
     }
     
     else {
-      if (prediction == 0 && annotation == 1){
-            vec3 aColor = sampleTexture(annotationTexture, vPosition.xy).rgb;
-            out_FragColor = vec4(color + aColor, 1.0);
-      } else if (prediction == 1 && annotation == 1) {
-            vec3 aColor = sampleTexture(annotationTexture, vPosition.xy).rgb;
+      // if (prediction == 0 && forestMap == 1){
+      //       vec3 fColor = sampleTexture(forestMapTexture, vPosition.xy).rgb;
+      //       out_FragColor = vec4(color + fColor, 1.0);
+      // } else if (prediction == 1 && forestMap == 1) {
+      //       vec3 fColor = sampleTexture(forestMapTexture, vPosition.xy).rgb;
+      //       vec3 pColor = sampleTexture(predictionTexture, vPosition.xy).rgb;
+      //       out_FragColor = vec4(color + pColor + fColor, 1.0);
+      // } 
+      if (prediction == 1) {
             vec3 pColor = sampleTexture(predictionTexture, vPosition.xy).rgb;
-            out_FragColor = vec4(color + aColor + pColor, 1.0);
-      } else {
-            out_FragColor = vec4(color, 1.0);
+            out_FragColor = vec4(color + pColor, 1.0);
+      }
+      else{
+        out_FragColor = vec4(color, 1.0);
       }
     }
 }
