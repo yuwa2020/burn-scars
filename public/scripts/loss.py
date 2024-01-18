@@ -37,6 +37,7 @@ class ElevationLoss(nn.Module):
         
         ## Generate Pred Masks
         ones = torch.ones_like(gt_labels)
+        # print("ones: ", ones.shape)
         
         flood_mask = torch.where(pred_label_idx == 0, ones, 0)
         dry_mask = torch.where(pred_label_idx == 1, ones, 0)
@@ -46,6 +47,8 @@ class ElevationLoss(nn.Module):
         ## Appropiately Mask Each Prediciton channel
         flood_pred = flood_pred*flood_mask
         dry_pred = -dry_pred*dry_mask
+        # print("flood_pred_masked: ", flood_pred.shape)
+        # print("dry_pred_masked: ", dry_pred.shape)
         
         ## Combine all prediciton  channels to One
         unified_pred = flood_pred+dry_pred
@@ -74,7 +77,15 @@ class ElevationLoss(nn.Module):
         
         
         ## Calculate Score
-        score = 1 - (gt_unfolded*pred_flat)
+        gt_unfolded_abs = torch.abs(gt_unfolded)
+        # print("gt_unfolded_abs: ", gt_unfolded_abs.shape)
+        
+        gt_unfolded_sign = torch.sign(gt_unfolded)
+        # print("gt_unfolded_sign: ", gt_unfolded_sign.shape)
+        
+        
+        score = gt_unfolded_abs * (1-(gt_unfolded_sign*pred_flat)) 
+        # print("score: ", score.shape)
     
         # Calculate Elevation Delta
         delta_unfolded = (h_flat - h_unfolded)

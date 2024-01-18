@@ -321,8 +321,10 @@ def train(TEST_REGION):
 
     model = UNet(config.IN_CHANNEL, config.N_CLASSES, ultrasmall = True).to(DEVICE)
     optimizer = SGD(model.parameters(), lr = 1e-7)
-    # criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index = 0)
+#     criterion = torch.nn.CrossEntropyLoss(reduction = 'sum')
     criterion = torch.nn.MSELoss(reduction = 'sum')
+#     criterion = torch.nn.BCELoss(reduction = 'sum')
+#     criterion = torch.nn.KLDivLoss(reduction="batchmean")
     elev_eval = Evaluator()
 
     # read resume epoch from text file if exists
@@ -388,6 +390,10 @@ def train(TEST_REGION):
 
             ## Backprop Loss
             optimizer.zero_grad()
+#             loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
+
+#             pred = F.log_softmax(pred, dim=1)
+#             labels = F.softmax(labels, dim = 1)
             loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
 
             loss.backward()
@@ -424,6 +430,10 @@ def train(TEST_REGION):
                 ## Get model prediction
                 pred = model(rgb_data)
 
+#                 loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
+                
+#                 pred = F.log_softmax(pred, dim=1)
+#                 labels = F.softmax(labels, dim = 1)
                 loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
 
                 ## Record loss for batch
