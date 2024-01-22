@@ -119,6 +119,8 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
             self.rgb_data = np.concatenate((self.rgb_data, self.elev_data), axis = -1)
         elif self.input_channel == 3:
             self.rgb_data = self.rgb_data
+        elif self.input_channel == 6:
+            self.rgb_data = np.concatenate((self.rgb_data, self.regular_rgb), axis = -1)
         # print("self.rgb_data.shape: ", self.rgb_data.shape)
         
         
@@ -169,6 +171,12 @@ def get_dataset_al(cropped_data_path, input_channel):
     elif input_channel == 3:
         training_transforms += [torchvision.transforms.Normalize((0.5, 0.5, 0.5),
                                                                  (0.5, 0.5, 0.5))]
+    elif input_channel == 6:
+        training_transforms += [torchvision.transforms.Normalize((0.5, 0.5, 0.5, 0.5, 0.5, 0.5),
+                                                                 (0.5, 0.5, 0.5, 0.5, 0.5, 0.5))]
+    else:
+        print("Invalid number of input channels")
+        exit(0)
     
     data_transforms = transforms.Compose(training_transforms)
     
