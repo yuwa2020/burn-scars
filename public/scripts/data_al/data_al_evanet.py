@@ -74,7 +74,7 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
         
         ## Get the corresponding label for forests (forest model)
         self.label_file_forest = re.sub("features", "label_forest", self.feature_file)
-        self.label_data_forest = np.load(os.path.join(self.data_path, self.label_file_forest)).astype('float32')
+        self.label_data_forest = np.load(os.path.join(self.data_path, self.label_file_forest)).astype('int')
         
         
         ## Seperate elevation data from RGB
@@ -90,29 +90,24 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
             Data label format: Flood = 1, Dry = 0, Unknown = -1
             Label shape: B, C, H, W
         """      
-        # self.flood = np.where(self.label_data == 1, 1, 0).astype('int')
-        # self.dry = np.where(self.label_data == 0, -1, 0).astype('int')
-        # self.formatted_label_data = self.flood + self.dry
-        # self.formatted_label_data = np.expand_dims(self.formatted_label_data, 0).astype('int')
-        
-        
-        ### For testing labels with CE loss 0: Unknown, 1: Flood, 2: Dry
-        # self.formatted_label_data = np.where(self.label_data == 0, 2, self.label_data).astype('int')
-        # self.formatted_label_data = np.where(self.label_data == -1, 0, self.formatted_label_data).astype('int')
         
         ### For testing labels with MSE loss 
         # from frontend: 1: forest, -1: not forest, 0: unknown
         # required: 0: forest, 1: not forest, 0.5: unknown
-        forest = np.where(self.label_data_forest == 1, -10, 0)
-        not_forest = np.where(self.label_data_forest == -1, -11, 0)
-        unk = np.where(self.label_data_forest == 0, -12, 0)
-        self.formatted_label_data_forest = forest + not_forest + unk
 
-        self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -10, 0, self.formatted_label_data_forest).astype('float32')
-        self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -11, 1, self.formatted_label_data_forest).astype('float32')
-        self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -12, 0.5, self.formatted_label_data_forest).astype('float32')
+        # forest = np.where(self.label_data_forest == 1, -10, 0)
+        # not_forest = np.where(self.label_data_forest == -1, -11, 0)
+        # unk = np.where(self.label_data_forest == 0, -12, 0)
+        # self.formatted_label_data_forest = forest + not_forest + unk
 
-        # self.formatted_label_data_forest = np.where(self.label_data_forest == -1, 2, self.label_data_forest).astype('int')
+        # self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -10, 0, self.formatted_label_data_forest).astype('float32')
+        # self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -11, 1, self.formatted_label_data_forest).astype('float32')
+        # self.formatted_label_data_forest = np.where(self.formatted_label_data_forest == -12, 0.5, self.formatted_label_data_forest).astype('float32')
+
+        ### For testing labels with CE loss 
+        # from frontend: 1: forest, -1: not forest, 0: unknown
+        # required: 0: unknown, 1: forest, 2: not forest
+        self.formatted_label_data_forest = np.where(self.label_data_forest == -1, 2, self.label_data_forest).astype('int')
         
         ## Merge Disaster and regular time RGB
         self.rgb_data = self.disaster_rgb

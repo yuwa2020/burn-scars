@@ -321,8 +321,8 @@ def train(TEST_REGION):
 
     model = UNet(config.IN_CHANNEL, config.N_CLASSES, ultrasmall = True).to(DEVICE)
     optimizer = SGD(model.parameters(), lr = 1e-7)
-#     criterion = torch.nn.CrossEntropyLoss(reduction = 'sum')
-    criterion = torch.nn.MSELoss(reduction = 'sum')
+    criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index=0)
+    # criterion = torch.nn.MSELoss(reduction = 'sum')
 #     criterion = torch.nn.BCELoss(reduction = 'sum')
 #     criterion = torch.nn.KLDivLoss(reduction="batchmean")
     elev_eval = Evaluator()
@@ -382,7 +382,7 @@ def train(TEST_REGION):
             ## Data labels
             Elev Loss function label format: Flood = 1, Unknown = 0, Dry = -1 
             """
-            labels = data_dict['labels_forest'].float().to(DEVICE)
+            labels = data_dict['labels_forest'].long().to(DEVICE)
             labels.requires_grad = False  
 
             ## Get model prediction
@@ -390,11 +390,12 @@ def train(TEST_REGION):
 
             ## Backprop Loss
             optimizer.zero_grad()
-#             loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
 
 #             pred = F.log_softmax(pred, dim=1)
 #             labels = F.softmax(labels, dim = 1)
-            loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
+            # loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
+
+            loss = criterion.forward(pred, labels)
 
             loss.backward()
             optimizer.step()
@@ -425,16 +426,15 @@ def train(TEST_REGION):
                 # elev_data = data_dict['elev_data'].float().to(DEVICE)
                 # norm_elev_data = data_dict['norm_elev_data'].float().to(DEVICE)
                 ## Data labels
-                labels = data_dict['labels_forest'].float().to(DEVICE)
+                labels = data_dict['labels_forest'].long().to(DEVICE)
 
                 ## Get model prediction
                 pred = model(rgb_data)
-
-#                 loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
                 
 #                 pred = F.log_softmax(pred, dim=1)
 #                 labels = F.softmax(labels, dim = 1)
-                loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
+                # loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
+                loss = criterion.forward(pred, labels)
 
                 ## Record loss for batch
                 val_loss += loss.item()
@@ -526,33 +526,30 @@ def run_prediction(TEST_REGION):
     rgb_stitched, pred_stitched = stitch_patches_augmented(pred_patches_dict, TEST_REGION)
     pred_unpadded = center_crop_augmented(pred_stitched, height, width, image = False)
 
-    pred_unpadded = pred_unpadded[:,:,0]
+    print("pred_unpadded.shape: ", pred_unpadded.shape)
+    print(np.max(pred_unpadded))
+    pred_forest = pred_unpadded[:,:,1]
+    np.save("./R1_pred_np.npy", pred_forest)
 
-    forest = np.where(pred_unpadded < 0.5, 1, 0)
-    not_forest = np.where(pred_unpadded >= 0.5, 1, 0)
+    pred_forest = pred_forest.astype("float32")
+    new_arr = np.zeros((pred_forest.shape[0], pred_forest.shape[1], 3), dtype=np.uint8)
+    new_arr[:,:,1] = pred_forest*128
 
-    forest = np.expand_dims(forest, axis=-1)
-    not_forest = np.expand_dims(not_forest, axis=-1)
+    plt.imsave('./R1_pred_test.png', new_arr)
 
-    forest = forest*np.array([ [ [0, 255, 0] ] ])
-    not_forest = not_forest*np.array([ [ [0, 0, 255] ] ])
-    pred_labels = (forest + not_forest).astype('uint8')
 
-    # pred_unpadded = np.argmax(pred_unpadded, axis = -1)
-
-    # forest = np.where(pred_unpadded == 1, 1, 0)
-    # not_forest = np.where(pred_unpadded == 0, 1, 0)
+    # forest = np.where(pred_unpadded < 0.5, 1, 0)
+    # not_forest = np.where(pred_unpadded >= 0.5, 1, 0)
 
     # forest = np.expand_dims(forest, axis=-1)
     # not_forest = np.expand_dims(not_forest, axis=-1)
 
     # forest = forest*np.array([ [ [0, 255, 0] ] ])
     # not_forest = not_forest*np.array([ [ [0, 0, 255] ] ])
-
     # pred_labels = (forest + not_forest).astype('uint8')
 
-    pim = Image.fromarray(pred_labels)
-    pim.convert('RGB').save("./R1_pred_test.png")
+    # pim = Image.fromarray(pred_labels)
+    # pim.convert('RGB').save("./R1_pred_test.png")
 
     # return metrices
 

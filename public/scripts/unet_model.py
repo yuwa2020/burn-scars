@@ -70,8 +70,8 @@ class UNet(nn.Module):
             self.up7 = up(16, 8, activ=False)
 
         self.outc = outconv(8, n_classes)
-#         self.out_nonlin = nn.Sigmoid()
-        self.out_nonlin = nn.ReLU()
+        self.out_nonlin = nn.Sigmoid()
+        # self.out_nonlin = nn.ReLU()
 
         # This layer is not connected anywhere
         # It is only here for backward compatibility

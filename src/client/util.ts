@@ -31,7 +31,8 @@ import {
     confidenceContext,
     context,
     forestMapTexture, 
-    labelsTexture
+    labelsTexture,
+    retrainSession,
 } from './client'
 import { terrainDimensions } from './constants'
 import * as JSZip from 'jszip'
@@ -453,168 +454,186 @@ function dataURItoBlob(dataURI: string) {
 }
 
 
-function showLoadingScreen(){
-    ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'block'
-    // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'block'
-    ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
-}
+// function showLoadingScreen(){
+//     ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'block'
+//     // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'block'
+//     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+// }
 
-function hideLoadingScreen(){
-    ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
-    // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
-    ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
-}
+// function hideLoadingScreen(){
+//     ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
+//     // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
+//     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+// }
 
-// Function to poll the backend
-async function pollBackendTask(taskId: string) {
-    const response = await fetch(`http://127.0.0.1:5005/check-status?taskId=${taskId}`);
-    const data = await response.json();
+// // Function to poll the backend
+// async function pollBackendTask(taskId: string) {
+//     const response = await fetch(`http://127.0.0.1:5005/check-status?taskId=${taskId}`);
+//     const data = await response.json();
 
-    console.log("data: ", data)
+//     console.log("data: ", data)
   
-    if (data.status === 'completed') {
-        // Backend task is completed, handle the response
-        console.log('Backend task completed:', data.result);
+//     if (data.status === 'completed') {
+//         // Backend task is completed, handle the response
+//         console.log('Backend task completed:', data.result);
 
-        // context!.clearRect(0, 0, annCanvas.width, annCanvas.height);
-        // forestMapTexture.needsUpdate = true;
+//         // context!.clearRect(0, 0, annCanvas.width, annCanvas.height);
+//         // forestMapTexture.needsUpdate = true;
   
-        // Continue with other actions on the frontend
-        const superpixelBuffer = await fetch(`http://127.0.0.1:5005/superpixel?recommend=${0}`).then(response => response.arrayBuffer());
-        console.log("superpixelBuffer: ", superpixelBuffer)
+//         // Continue with other actions on the frontend
+//         const superpixelBuffer = await fetch(`http://127.0.0.1:5005/superpixel?recommend=${0}`).then(response => response.arrayBuffer());
+//         console.log("superpixelBuffer: ", superpixelBuffer)
 
-        // Convert ArrayBuffer to base64
-        const base64ImageSuperpixel = arrayBufferToBase64(superpixelBuffer)
+//         // Convert ArrayBuffer to base64
+//         const base64ImageSuperpixel = arrayBufferToBase64(superpixelBuffer)
 
-        // Create an Image element
-        const imgSuperpixel = new Image();
+//         // Create an Image element
+//         const imgSuperpixel = new Image();
 
-        // Set the source of the Image to the base64-encoded PNG data
-        imgSuperpixel.src = 'data:image/png;base64,' + base64ImageSuperpixel;
+//         // Set the source of the Image to the base64-encoded PNG data
+//         imgSuperpixel.src = 'data:image/png;base64,' + base64ImageSuperpixel;
 
-        await new Promise(resolve => {
-            imgSuperpixel.onload = resolve;
-        });
+//         await new Promise(resolve => {
+//             imgSuperpixel.onload = resolve;
+//         });
 
-        // Set canvas dimensions to match the image dimensions
-        superpixelCanvas.width = imgSuperpixel.width;
-        superpixelCanvas.height = imgSuperpixel.height;
+//         // Set canvas dimensions to match the image dimensions
+//         superpixelCanvas.width = imgSuperpixel.width;
+//         superpixelCanvas.height = imgSuperpixel.height;
 
-        console.log("height: ", superpixelCanvas.height)
-        console.log("width: ", superpixelCanvas.width)
+//         console.log("height: ", superpixelCanvas.height)
+//         console.log("width: ", superpixelCanvas.width)
 
-        // Draw the image on the canvas
-        superpixelContext!.drawImage(imgSuperpixel, 0, 0);
-        superpixelTexture.needsUpdate = true // saugat
+//         // Draw the image on the canvas
+//         superpixelContext!.drawImage(imgSuperpixel, 0, 0);
+//         superpixelTexture.needsUpdate = true // saugat
 
-        const predBuffer = await fetch('http://127.0.0.1:5005/pred').then(response => response.arrayBuffer());
-        console.log("arraybuffer: ", predBuffer)
+//         const predBuffer = await fetch('http://127.0.0.1:5005/pred').then(response => response.arrayBuffer());
+//         console.log("arraybuffer: ", predBuffer)
 
-        // Convert ArrayBuffer to base64
-        const base64ImagePred = arrayBufferToBase64(predBuffer)
+//         // Convert ArrayBuffer to base64
+//         const base64ImagePred = arrayBufferToBase64(predBuffer)
 
-        // Create an Image element
-        const imgPred = new Image();
+//         // Create an Image element
+//         const imgPred = new Image();
 
-        // Set the source of the Image to the base64-encoded PNG data
-        imgPred.src = 'data:image/png;base64,' + base64ImagePred;
+//         // Set the source of the Image to the base64-encoded PNG data
+//         imgPred.src = 'data:image/png;base64,' + base64ImagePred;
 
-        // Wait for the image to load
-        imgPred.onload = () => {
+//         // Wait for the image to load
+//         imgPred.onload = () => {
 
-            // Set canvas dimensions to match the image dimensions
-            predCanvas.width = imgPred.width;
-            predCanvas.height = imgPred.height;
+//             // Set canvas dimensions to match the image dimensions
+//             predCanvas.width = imgPred.width;
+//             predCanvas.height = imgPred.height;
 
-            console.log("height: ", predCanvas.height)
-            console.log("width: ", predCanvas.width)
+//             console.log("height: ", predCanvas.height)
+//             console.log("width: ", predCanvas.width)
 
-            // Draw the image on the canvas
-            predContext!.drawImage(imgPred, 0, 0);
-            predictionTexture.needsUpdate = true // saugat
-        };
+//             // Draw the image on the canvas
+//             predContext!.drawImage(imgPred, 0, 0);
+//             predictionTexture.needsUpdate = true // saugat
+//         };
 
-        ;(document.getElementById('exploration') as HTMLElement).style.display = 'block'
-        ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
-        // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
-        ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+//         ;(document.getElementById('exploration') as HTMLElement).style.display = 'block'
+//         ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
+//         // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
+//         ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
     
-        // Hide the loading screen
-        //   hideLoadingScreen();
-    } else {
-      // Backend task is still in progress, continue polling
-      setTimeout(() => pollBackendTask(taskId), 120000); // Poll every 2 mins
-    }
-  }
+//         // Hide the loading screen
+//         //   hideLoadingScreen();
+//     } else {
+//       // Backend task is still in progress, continue polling
+//       setTimeout(() => pollBackendTask(taskId), 120000); // Poll every 2 mins
+//     }
+//   }
 
-// saugat
-async function retrainSession(event: Event) {
-    event.stopPropagation();
+// // saugat
+// async function retrainSession(event: Event) {
+//     event.stopPropagation();
     
-    // TODO: check what this does???
-    // disposeUniform()
-    console.log("Retrain session")
+//     // TODO: check what this does???
+//     // disposeUniform()
+//     console.log("Retrain session")
 
-    var dataURL = annCanvas.toDataURL()
+//     var dataURL = labelsCanvas.toDataURL()
 
-    // Create a FormData object and append the image data
-    var formData = new FormData();
-    const dataURLFile = dataURItoBlob(dataURL);
-    formData.append('image', dataURLFile);
+//     // Create a FormData object and append the image data
+//     var formData = new FormData();
+//     const dataURLFile = dataURItoBlob(dataURL);
+//     formData.append('image', dataURLFile);
 
-    const taskId = encodeURIComponent(sessionData.name);
+//     const taskId = encodeURIComponent(sessionData.name);
 
-    // Send a POST request to the Flask backend
-    showLoadingScreen();
-    const response = await fetch(`http://127.0.0.1:5005/retrain?taskId=${taskId}`, {
-        method: 'POST',
-        body: formData,
-    });
-    const data = await response.json();
+//     // Send a POST request to the Flask backend
+//     showLoadingScreen();
+//     const response = await fetch(`http://127.0.0.1:5005/retrain?taskId=${taskId}`, {
+//         method: 'POST',
+//         body: formData,
+//     });
+//     const data = await response.json();
 
-    // Check if the task was successfully started
-    if (data.status === 'success') {
-        // Start polling the backend for task status
-        // pollBackendTask(data.taskId);
+//     // Check if the task was successfully started
+//     if (data.status === 'success') {
+//         // Start polling the backend for task status
+//         // pollBackendTask(data.taskId);
 
-        const predBuffer = await fetch('http://127.0.0.1:5005/pred').then(response => response.arrayBuffer());
-        console.log("arraybuffer: ", predBuffer)
+//         const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${0}`).then(response => response.arrayBuffer());
+//         console.log("arraybuffer: ", predBuffer)
 
-        // Convert ArrayBuffer to base64
-        const base64ImagePred = arrayBufferToBase64(predBuffer)
+//         // Convert ArrayBuffer to base64
+//         const base64ImagePred = arrayBufferToBase64(predBuffer)
 
-        // Create an Image element
-        const imgPred = new Image();
+//         // Create an Image element
+//         const imgPred = new Image();
+//         const imgForest = new Image();
 
-        // Set the source of the Image to the base64-encoded PNG data
-        imgPred.src = 'data:image/png;base64,' + base64ImagePred;
+//         // Set the source of the Image to the base64-encoded PNG data
+//         imgPred.src = 'data:image/png;base64,' + base64ImagePred;
+//         imgForest.src = 'data:image/png;base64,' + base64ImagePred;
 
-        // Wait for the image to load
-        imgPred.onload = () => {
+//         // Wait for the image to load
+//         imgPred.onload = () => {
 
-            // Set canvas dimensions to match the image dimensions
-            predCanvas.width = imgPred.width;
-            predCanvas.height = imgPred.height;
+//             // Set canvas dimensions to match the image dimensions
+//             predCanvas.width = imgPred.width;
+//             predCanvas.height = imgPred.height;
 
-            console.log("height: ", predCanvas.height)
-            console.log("width: ", predCanvas.width)
+//             console.log("height: ", predCanvas.height)
+//             console.log("width: ", predCanvas.width)
 
-            // Draw the image on the canvas
-            predContext!.drawImage(imgPred, 0, 0);
-            predictionTexture.needsUpdate = true // saugat
-        };
+//             // Draw the image on the canvas
+//             predContext!.drawImage(imgPred, 0, 0);
+//             predictionTexture.needsUpdate = true // saugat
 
-        ;(document.getElementById('exploration') as HTMLElement).style.display = 'block'
-        ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
-        // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
-        ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+//             predDataImported = predContext.getImageData(0, 0, predCanvas.width, predCanvas.height);
+//         };
 
-    } else {
-        // Handle the case where the task couldn't be started
-        console.error('Failed to start backend task');
-        hideLoadingScreen();
-    }
-}
+//         // Wait for the image to load
+//         imgForest.onload = () => {
+
+//             // Set canvas dimensions to match the image dimensions
+//             annCanvas.width = imgForest.width;
+//             annCanvas.height = imgForest.height;
+
+//             console.log("height: ", annCanvas.height)
+//             console.log("width: ", annCanvas.width)
+
+//             context!.drawImage(imgForest, 0, 0);
+//             forestMapTexture.needsUpdate = true
+//         };
+
+//         ;(document.getElementById('exploration') as HTMLElement).style.display = 'block'
+//         ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
+//         // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
+//         ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+
+//     } else {
+//         // Handle the case where the task couldn't be started
+//         console.error('Failed to start backend task');
+//         hideLoadingScreen();
+//     }
+// }
 
 function hideModal() {
     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'

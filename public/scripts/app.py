@@ -75,15 +75,15 @@ def stl():
 
 @app.route('/pred')
 def pred():
-    initial = int(request.args.get('initial', 0))
-    if initial:
-        payload = make_response(send_file('R1_forest.png'))
-    # else:
-    #     payload = make_response(send_file('R1_pred_test.png'))
-    else:
+    predict = int(request.args.get('predict', 0))
+
+    if predict:
         TEST_REGION = 1 # TODO
         run_prediction(TEST_REGION)
         payload = make_response(send_file('R1_pred_test.png'))
+    else:
+        payload = make_response(send_file('R1_pred_test.png'))
+    
     payload.headers.add('Access-Control-Allow-Origin', '*')
     return payload
 

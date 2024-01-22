@@ -87,6 +87,262 @@ stats_mb.showPanel(2)
 stats_mb.domElement.style.cssText = 'position:absolute;top:250px;right:50px;'
 document.body.appendChild(stats_mb.domElement)
 
+
+const thresholdSlider = document.getElementById('thresholdSlider') as HTMLInputElement;
+const sliderValue = document.getElementById('sliderValue') as HTMLInputElement;
+
+var predDataOrig: ImageData;
+
+function clearPixelsBelowThreshold(thresholdValue: any) {
+    // const thresholdValue = parseInt(thresholdSlider.value, 10);
+
+    // Get the pixel data from the entire canvas
+    const imageData = predContext.getImageData(0, 0, predCanvas.width, predCanvas.height);
+
+    const predDataCurr = imageData.data;
+    const predData = predDataOrig.data;
+
+    // Iterate through pixel data
+    for (let i = 0; i < predData.length; i += 4) {
+        const my_val = predData[i + 1];
+
+        if (my_val < thresholdValue) {
+            // Set the alpha channel (transparency) to 0 for pixels below the threshold
+            predDataCurr[i + 3] = 0;
+        }
+        else{
+            predDataCurr[i] = 0;
+            predDataCurr[i + 1] = 127;
+            predDataCurr[i + 2] = 0;
+            predDataCurr[i + 3] = 255;
+        }
+    }
+
+    // Put the modified pixel data back to the canvas
+    predContext.putImageData(imageData, 0, 0);
+    predictionTexture.needsUpdate = true;
+    
+    context.putImageData(imageData, 0, 0);
+    forestMapTexture.needsUpdate = true;
+}
+
+// Event listener for the threshold slider
+thresholdSlider.addEventListener('input', function() {
+    // Get the current threshold value from the slider
+    const thresholdValue = parseInt(thresholdSlider.value, 10);
+    sliderValue.textContent = String((Number.parseFloat(thresholdSlider.value)/128).toFixed(2));
+
+    clearPixelsBelowThreshold(thresholdValue);
+});
+
+function showLoadingScreen(){
+    ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'block'
+    // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'block'
+    ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+}
+
+function hideLoadingScreen(){
+    ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
+    // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
+    ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+}
+
+// Function to poll the backend
+async function pollBackendTask(taskId: string) {
+    const response = await fetch(`http://127.0.0.1:5005/check-status?taskId=${taskId}`);
+    const data = await response.json();
+
+    console.log("data: ", data)
+  
+    if (data.status === 'completed') {
+        // Backend task is completed, handle the response
+        console.log('Backend task completed:', data.result);
+
+        // context!.clearRect(0, 0, annCanvas.width, annCanvas.height);
+        // forestMapTexture.needsUpdate = true;
+  
+        // Continue with other actions on the frontend
+        const superpixelBuffer = await fetch(`http://127.0.0.1:5005/superpixel?recommend=${0}`).then(response => response.arrayBuffer());
+        console.log("superpixelBuffer: ", superpixelBuffer)
+
+        // Convert ArrayBuffer to base64
+        const base64ImageSuperpixel = arrayBufferToBase64(superpixelBuffer)
+
+        // Create an Image element
+        const imgSuperpixel = new Image();
+
+        // Set the source of the Image to the base64-encoded PNG data
+        imgSuperpixel.src = 'data:image/png;base64,' + base64ImageSuperpixel;
+
+        await new Promise(resolve => {
+            imgSuperpixel.onload = resolve;
+        });
+
+        // Set canvas dimensions to match the image dimensions
+        superpixelCanvas.width = imgSuperpixel.width;
+        superpixelCanvas.height = imgSuperpixel.height;
+
+        console.log("height: ", superpixelCanvas.height)
+        console.log("width: ", superpixelCanvas.width)
+
+        // Draw the image on the canvas
+        superpixelContext!.drawImage(imgSuperpixel, 0, 0);
+        superpixelTexture.needsUpdate = true // saugat
+
+        const predBuffer = await fetch('http://127.0.0.1:5005/pred').then(response => response.arrayBuffer());
+        console.log("arraybuffer: ", predBuffer)
+
+        // Convert ArrayBuffer to base64
+        const base64ImagePred = arrayBufferToBase64(predBuffer)
+
+        // Create an Image element
+        const imgPred = new Image();
+
+        // Set the source of the Image to the base64-encoded PNG data
+        imgPred.src = 'data:image/png;base64,' + base64ImagePred;
+
+        // Wait for the image to load
+        imgPred.onload = () => {
+
+            // Set canvas dimensions to match the image dimensions
+            predCanvas.width = imgPred.width;
+            predCanvas.height = imgPred.height;
+
+            console.log("height: ", predCanvas.height)
+            console.log("width: ", predCanvas.width)
+
+            // Draw the image on the canvas
+            predContext!.drawImage(imgPred, 0, 0);
+            predictionTexture.needsUpdate = true // saugat
+        };
+
+        ;(document.getElementById('exploration') as HTMLElement).style.display = 'block'
+        ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
+        // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
+        ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+    
+        // Hide the loading screen
+        //   hideLoadingScreen();
+    } else {
+      // Backend task is still in progress, continue polling
+      setTimeout(() => pollBackendTask(taskId), 120000); // Poll every 2 mins
+    }
+  }
+
+function dataURItoBlob(dataURI: string) {
+    // convert base64 to raw binary data held in a string
+    // doesn't handle URLEncoded DataURIs - see SO answer #6850276 for code that does this
+    var byteString = atob(dataURI.split(',')[1]);
+
+    // separate out the mime component
+    var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+    // write the bytes of the string to an ArrayBuffer
+    var ab = new ArrayBuffer(byteString.length);
+    var ia = new Uint8Array(ab);
+    for (var i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+
+    //Old Code
+    //write the ArrayBuffer to a blob, and you're done
+    //var bb = new BlobBuilder();
+    //bb.append(ab);
+    //return bb.getBlob(mimeString);
+
+    //New Code
+    return new Blob([ab], {type: mimeString});
+}
+
+// saugat
+async function retrainSession(event: Event) {
+    event.stopPropagation();
+    
+    // TODO: check what this does???
+    // disposeUniform()
+    console.log("Retrain session")
+
+    var dataURL = labelsCanvas.toDataURL()
+
+    // Create a FormData object and append the image data
+    var formData = new FormData();
+    const dataURLFile = dataURItoBlob(dataURL);
+    formData.append('image', dataURLFile);
+
+    const taskId = encodeURIComponent(sessionData.name);
+
+    // Send a POST request to the Flask backend
+    showLoadingScreen();
+    const response = await fetch(`http://127.0.0.1:5005/retrain?taskId=${taskId}`, {
+        method: 'POST',
+        body: formData,
+    });
+    const data = await response.json();
+
+    // Check if the task was successfully started
+    if (data.status === 'success') {
+        // Start polling the backend for task status
+        // pollBackendTask(data.taskId);
+
+        const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${0}`).then(response => response.arrayBuffer());
+        console.log("arraybuffer: ", predBuffer)
+
+        // Convert ArrayBuffer to base64
+        const base64ImagePred = arrayBufferToBase64(predBuffer)
+
+        // Create an Image element
+        const imgPred = new Image();
+        const imgForest = new Image();
+
+        // Set the source of the Image to the base64-encoded PNG data
+        imgPred.src = 'data:image/png;base64,' + base64ImagePred;
+        imgForest.src = 'data:image/png;base64,' + base64ImagePred;
+
+        // Wait for the image to load
+        imgPred.onload = () => {
+
+            // Set canvas dimensions to match the image dimensions
+            predCanvas.width = imgPred.width;
+            predCanvas.height = imgPred.height;
+
+            console.log("height: ", predCanvas.height)
+            console.log("width: ", predCanvas.width)
+
+            // Draw the image on the canvas
+            predContext!.drawImage(imgPred, 0, 0);
+            predictionTexture.needsUpdate = true // saugat
+
+            predDataOrig = predContext.getImageData(0, 0, predCanvas.width, predCanvas.height);
+        };
+
+        // Wait for the image to load
+        imgForest.onload = () => {
+
+            // Set canvas dimensions to match the image dimensions
+            annCanvas.width = imgForest.width;
+            annCanvas.height = imgForest.height;
+
+            console.log("height: ", annCanvas.height)
+            console.log("width: ", annCanvas.width)
+
+            context!.drawImage(imgForest, 0, 0);
+            forestMapTexture.needsUpdate = true
+        };
+
+        ;(document.getElementById('exploration') as HTMLElement).style.display = 'block'
+        ;(document.getElementById('loaderSide') as HTMLElement).style.display = 'none'
+        // ;(document.getElementById('loaderTrain') as HTMLElement).style.display = 'none'
+        ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+
+    } else {
+        // Handle the case where the task couldn't be started
+        console.error('Failed to start backend task');
+        hideLoadingScreen();
+    }
+}
+
+
+
 let eventFunction: { [key: string]: any } = {
     BFS: (x: number, y: number, flood: boolean, clear: boolean) => BFSHandler(x, y, flood, clear),
     brush: (x: number, y: number, flood: boolean, clear: boolean) =>
@@ -1252,7 +1508,7 @@ const onKeyPress = (event: KeyboardEvent) => {
     //     y = regionDimensions[1] - 1 - y
     //     connectedSegAnnotationHandler('s', x, y, params.flood, params.clear)
     // }
-    else if (event.key == 'Enter') {
+    else if (event.key == ' ') {
         buttonPressHandlerPrediction()
     }
 }
@@ -1263,12 +1519,12 @@ const onKeyUp = (event: KeyboardEvent) => {
     // }
     // else 
     if (event.key == ' '){
-        params.superpixelKey = 0
-        uniforms.superpixelKey.value = params.superpixelKey
-    }
-    else if (event.key == 'Enter'){
         params.forestMapKey = 0
         uniforms.forestMapKey.value = params.forestMapKey
+    }
+    else if (event.key == 'Enter'){
+        params.superpixelKey = 0
+        uniforms.superpixelKey.value = params.superpixelKey
     }
 }
 
@@ -1280,6 +1536,8 @@ async function startUp() {
         ;(document.getElementById('uploadForm') as HTMLFormElement).style.display = 'none'
         ;(document.getElementById('download') as HTMLElement).style.display = 'block'
     })
+    // // thresholdSlider.addEventListener('input', updateCanvas)
+    // document.getElementById('thresholdSlider')?.addEventListener('input', updateCanvas)
 }
 
 var diffuseTexture : THREE.Texture
@@ -1314,7 +1572,7 @@ var texContext : CanvasRenderingContext2D
                     // var predCanvas = document.createElement('canvas')
                     predCanvas.width = image.width
                     predCanvas.height = image.height
-                    predContext = predCanvas.getContext('2d')!
+                    predContext = predCanvas.getContext('2d', {willReadFrequently: true})!
 
                     // var superpixelCanvas = document.createElement('canvas')
                     superpixelCanvas.width = image.width
@@ -1389,7 +1647,7 @@ var texContext : CanvasRenderingContext2D
                                 mesh.position.set(0, 0, -100)
                                 scene.add(mesh)
 
-                                const predBuffer = await fetch(`http://127.0.0.1:5005/pred?initial=${1}`).then(response => response.arrayBuffer());
+                                const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${1}`).then(response => response.arrayBuffer());
                                 console.log("arraybuffer: ", predBuffer)
 
                                 // Convert ArrayBuffer to base64
@@ -1416,6 +1674,10 @@ var texContext : CanvasRenderingContext2D
                                     // Draw the image on the canvas
                                     predContext!.drawImage(imgPred, 0, 0);
                                     predictionTexture.needsUpdate = true // saugat
+                                    // console.log("predictionTexture: ", predictionTexture)
+
+                                    predDataOrig = predContext.getImageData(0, 0, predCanvas.width, predCanvas.height);
+                                    // console.log("predDataOrig: ", predDataOrig.data);
                                 };
 
                                 // Wait for the image to load
@@ -1654,4 +1916,5 @@ export {
     context, // for forestMap
     forestMapTexture,
     labelsTexture,
+    retrainSession,
 }

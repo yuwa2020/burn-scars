@@ -178,6 +178,34 @@ input[type='text'] {
     }
 }
 
+#sliderContainer {
+    position: absolute;
+    top: 40%;
+    right: 2%;
+    transform: translateY(-50%);
+    z-index: 999; /* Set a high z-index to ensure it's on top */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+  }
+
+  #thresholdSlider {
+    height: 150px; /* Set the height for vertical orientation */
+    width: 5px;
+    writing-mode: bt-lr; 
+    -webkit-appearance: slider-vertical;
+    margin-bottom: 5px;
+  }
+
+  #sliderValue {
+    /* margin-top: 5px; /* Add some space between slider and value */
+    /* margin-bottom: 10px; */
+    text-align: center;
+  }
+
 /* #loaderTrain {
     position: absolute;
     font-weight: 600;
