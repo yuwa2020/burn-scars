@@ -302,8 +302,8 @@ def ann_to_labels(png_image):
     ann = cv2.imread(png_image)
     ann = cv2.cvtColor(ann, cv2.COLOR_BGR2RGB)
 
-    forest = ann[:, :, 1] == 255
-    not_forest = ann[:, :, 2] == 255
+    forest = ann[:, :, 1] > 0
+    not_forest = ann[:, :, 2] > 0
 
     forest_arr = np.where(forest, 1, 0)
     not_forest_arr = np.where(not_forest, -1, 0)
@@ -345,9 +345,12 @@ def train(TEST_REGION):
     #     exit(0)
 
     updated_labels = ann_to_labels("./R1_labels.png")
+    np.save("R1_updated_labels.npy", updated_labels)
 
     # need to remake labels after getting updated labels
     remake_data(updated_labels, TEST_REGION)
+
+    # return
     
     cropped_data_path_al = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
     elev_val_test_dataset_al = get_dataset_al(cropped_data_path_al, config.IN_CHANNEL)
@@ -464,11 +467,11 @@ def train(TEST_REGION):
         file.write(str(resume_epoch))
     
     # call AL pipeline once the model is retrained
-    run_prediction(TEST_REGION)
+    run_prediction(TEST_REGION, updated_labels = updated_labels)
     
     return
 
-def run_prediction(TEST_REGION):
+def run_prediction(TEST_REGION, updated_labels = None):
 
     # return # TODO: remove after test
 
@@ -529,6 +532,13 @@ def run_prediction(TEST_REGION):
     print("pred_unpadded.shape: ", pred_unpadded.shape)
     print(np.max(pred_unpadded))
     pred_forest = pred_unpadded[:,:,1]
+
+    if updated_labels is not None:
+        forest_pixels = np.where(updated_labels == 1)
+        not_forest_pixels = np.where(updated_labels == -1)
+        pred_forest[forest_pixels] = 1
+        pred_forest[not_forest_pixels] = 0
+
     np.save("./R1_pred_np.npy", pred_forest)
 
     pred_forest = pred_forest.astype("float32")

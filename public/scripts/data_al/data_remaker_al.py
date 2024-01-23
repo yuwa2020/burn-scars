@@ -109,10 +109,13 @@ def pad_data_augment(unpadded_data, is_feature = False):
 #     print("data_padded: ", data_padded.shape, "\n")
     return data_padded, total_patches_x, total_patches_y
 
-def crop_data_augment(uncropped_data, filename, horizontal_patches, vertial_patches, is_feature = False, is_conf = False, is_forest = False):
+def crop_data_augment(uncropped_data, filename, horizontal_patches, vertical_patches, is_feature = False, is_conf = False, is_forest = False):
 
     # base_path = "./data_al/"
-    output_path = "./cropped_al"
+    # output_path = "./cropped_al"
+
+    output_path = os.path.join(os.getcwd(), "data_al/cropped_al")
+    print(output_path)
     if not os.path.exists(output_path):
         os.mkdir(output_path)
     
@@ -122,7 +125,7 @@ def crop_data_augment(uncropped_data, filename, horizontal_patches, vertial_patc
     print(f"height: {height} width: {width} ")
     print("spatial size: ", SPATIAL_SIZE)
 
-    print("VP: ", vertial_patches)
+    print("VP: ", vertical_patches)
     print("HP: ", horizontal_patches)
     
     cropped_data = []
@@ -130,7 +133,7 @@ def crop_data_augment(uncropped_data, filename, horizontal_patches, vertial_patc
     x_start = 0
     y_start = 0
     
-    for y in range(0, vertial_patches):
+    for y in range(0, vertical_patches):
         for x in range(0, horizontal_patches):
             
             if is_feature:
@@ -259,7 +262,7 @@ def crop_data_al(uncropped_data, filename, is_feature = False, is_conf = False, 
 
             
 def make_data(label_data, region_num):
-    label_file = f"Region_{region_num}_labels.npy"
+    label_file = f"Region_{region_num}_label_forest.npy"
 
     ###########Padd data to fit SPATIAL_SIZE pathches######################################
     padded_label, hor_patches, ver_patches = pad_data_augment(label_data)
@@ -279,10 +282,12 @@ def make_dir(TEST_REGION):
     
         
 def move_files(TEST_REGION):
-    base_path = "./data_al/"
+    # base_path = "./data_al/"
+
+    base_path = os.path.join(os.getcwd(), "data_al/")
     
     for file in tqdm(os.listdir(base_path + "cropped_al")):
-        if not "label" in file:
+        if not "label_forest" in file:
             continue
             
         file_region_num = int(file.split("_")[1])
@@ -299,6 +304,8 @@ def remake_data(label_data, region_num):
     
     ## Pad and crop data
     make_data(label_data, region_num)
+
+    # return
     
     ## Move image crops to directory
     move_files(region_num)

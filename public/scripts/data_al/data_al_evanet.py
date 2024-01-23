@@ -108,6 +108,8 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
         # from frontend: 1: forest, -1: not forest, 0: unknown
         # required: 0: unknown, 1: forest, 2: not forest
         self.formatted_label_data_forest = np.where(self.label_data_forest == -1, 2, self.label_data_forest).astype('int')
+        np.save("./R1_unformatted_labels_forest.npy", self.label_data_forest)
+        np.save("./R1_formatted_labels_forest.npy", self.formatted_label_data_forest)
         
         ## Merge Disaster and regular time RGB
         self.rgb_data = self.disaster_rgb
