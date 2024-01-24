@@ -61,11 +61,12 @@ target = os.path.join(APP_ROOT, app.config["UPLOAD_FOLDER"])
 
 @app.route('/stl', methods=['POST'])
 def stl():
+    TEST_REGION = int(request.args.get('testRegion', 1))
     if request.method == 'POST':
         f = request.files['file']
         f.save(f.filename)
 #         subprocess.check_output(['./hmm', f.filename, 'a.stl', '-z', '500', '-t', '10000000'])
-        payload = make_response(send_file('a.stl'))
+        payload = make_response(send_file(f'Region_{TEST_REGION}.stl'))
         payload.headers.add('Access-Control-Allow-Origin', '*')
         # os.remove('a.stl')
         # os.remove(f.filename)
@@ -75,14 +76,15 @@ def stl():
 
 @app.route('/pred')
 def pred():
+    student_id = request.args.get('taskId')
     predict = int(request.args.get('predict', 0))
+    TEST_REGION = int(request.args.get('testRegion', 1))
 
     if predict:
-        TEST_REGION = 1 # TODO
-        run_prediction(TEST_REGION)
-        payload = make_response(send_file('R1_pred_test.png'))
+        run_prediction(TEST_REGION, student_id)
+        payload = make_response(send_file(f'R{TEST_REGION}_pred_test.png'))
     else:
-        payload = make_response(send_file('R1_pred_test.png'))
+        payload = make_response(send_file(f'R{TEST_REGION}_pred_test.png'))
     
     payload.headers.add('Access-Control-Allow-Origin', '*')
     return payload
@@ -90,31 +92,31 @@ def pred():
 
 @app.route('/retrain', methods=['POST'])
 def retrain():
-    task_id = request.args.get('taskId')
+    student_id = request.args.get('taskId')
     file = request.files.get('image')
+    TEST_REGION = int(request.args.get('testRegion', 1))
+
     if file:
         print('image is here')
         # file = request.files['image']
 
         # Process the file as needed, for example, save it to the server
-        file.save('./R1_labels.png')
+        file.save(f'./R{TEST_REGION}_labels.png')
 
-        # TODO: call train function in al.py
-        TEST_REGION = 1 # TODO: this should be received from frontend
-        train(TEST_REGION)
+        train(TEST_REGION, student_id)
 
-        payload = make_response(jsonify({'status': 'success', 'taskId': task_id}), 200)
+        payload = make_response(jsonify({'status': 'success', 'taskId': student_id}), 200)
         payload.headers.add('Access-Control-Allow-Origin', '*')
 
-        with open(f"./status_{task_id}.txt", 'w') as file:
+        with open(f"./status_{student_id}.txt", 'w') as file:
             file.write("completed")
 
         return payload
 
-    payload = make_response(jsonify({'status': 'error', 'taskId': task_id}), 400)
+    payload = make_response(jsonify({'status': 'error', 'taskId': student_id}), 400)
     payload.headers.add('Access-Control-Allow-Origin', '*')
 
-    with open(f"./status_{task_id}.txt", 'w') as file:
+    with open(f"./status_{student_id}.txt", 'w') as file:
         file.write("error")
 
     return payload
@@ -122,11 +124,12 @@ def retrain():
 
 @app.route('/check-status', methods=['GET'])
 def check_status():
-    task_id = request.args.get('taskId')
-    print("task_id: ", task_id)
+    student_id = request.args.get('taskId')
+    TEST_REGION = int(request.args.get('testRegion', 1))
+    print("student_id: ", student_id)
 
     # logic to check the status of the task
-    with open(f"./status_{task_id}.txt", 'r') as file:
+    with open(f"./status_{student_id}.txt", 'r') as file:
         status = file.read()
     
     print("status: ", status)

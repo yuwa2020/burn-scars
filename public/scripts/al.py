@@ -313,7 +313,7 @@ def ann_to_labels(png_image):
     return final_arr
 
 
-def train(TEST_REGION):
+def train(TEST_REGION, student_id):
     print("Retraining the Model with new labels")
     # time.sleep(5)
     # return # TODO: remove after test
@@ -329,7 +329,7 @@ def train(TEST_REGION):
 
     # read resume epoch from text file if exists
     try:
-        with open("./resume_epoch.txt", 'r') as file:
+        with open(f"./resume_epoch_{student_id}.txt", 'r') as file:
             content = file.read()
             resume_epoch = int(content) 
     except FileNotFoundError:
@@ -463,17 +463,17 @@ def train(TEST_REGION):
                             'optimizer': optimizer.state_dict()}, 
                             f"./saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{epoch+1}.ckpt")
     
-    with open("./resume_epoch.txt", 'w') as file:
+    with open(f"./resume_epoch_{student_id}.txt", 'w') as file:
         file.write(str(resume_epoch))
     
     # call AL pipeline once the model is retrained
-    run_prediction(TEST_REGION, updated_labels = updated_labels)
+    run_prediction(TEST_REGION, student_id, updated_labels = updated_labels)
     
     return
 
-def run_prediction(TEST_REGION, updated_labels = None):
+def run_prediction(TEST_REGION, student_id, updated_labels = None):
 
-    # return # TODO: remove after test
+    return # TODO: remove after test
 
 
     start = time.time()
@@ -481,7 +481,7 @@ def run_prediction(TEST_REGION, updated_labels = None):
 
     # read resume epoch from text file if exists
     try:
-        with open("./resume_epoch.txt", 'r') as file:
+        with open(f"./resume_epoch_{student_id}.txt", 'r') as file:
             content = file.read()
             resume_epoch = int(content) 
     except FileNotFoundError:
