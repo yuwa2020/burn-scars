@@ -315,6 +315,22 @@ def ann_to_labels(png_image):
 
 def train(TEST_REGION, student_id):
     print("Retraining the Model with new labels")
+
+    if not os.path.exists(f"./users/{student_id}"):
+        os.mkdir(f"./users/{student_id}")
+
+    if not os.path.exists(f"./users/{student_id}/output"):
+        os.mkdir(f"./users/{student_id}/output")
+
+    if not os.path.exists(f"./users/{student_id}/saved_models_forest"):
+        os.mkdir(f"./users/{student_id}/saved_models_forest")
+    
+    if not os.path.exists(f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST"):
+        os.mkdir(f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST")
+
+    if not os.path.exists(f"./users/{student_id}/resume_epoch"):
+        os.mkdir(f"./users/{student_id}/resume_epoch")
+
     # time.sleep(5)
     # return # TODO: remove after test
 
@@ -329,23 +345,23 @@ def train(TEST_REGION, student_id):
 
     # read resume epoch from text file if exists
     try:
-        with open(f"./resume_epoch_{student_id}.txt", 'r') as file:
+        with open(f"./users/{student_id}/resume_epoch/R{TEST_REGION}.txt", 'r') as file:
             content = file.read()
             resume_epoch = int(content) 
     except FileNotFoundError:
         resume_epoch = 0
 
-    model_path = f"./saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
-    if os.path.exists(model_path):
-        checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
-        model.load_state_dict(checkpoint['model'])
-        print(f"Resuming from epoch {resume_epoch}")
-    # else:
-    #     print("Model not found!!!")
-    #     exit(0)
+    model_path = f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
+    if not os.path.exists(model_path):
+        model_path = f"./saved_models_forest/initial_model/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
 
-    updated_labels = ann_to_labels("./R1_labels.png")
-    np.save("R1_updated_labels.npy", updated_labels)
+    checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
+    model.load_state_dict(checkpoint['model'])
+    print(f"Resuming from epoch {resume_epoch}")
+    
+
+    updated_labels = ann_to_labels(f'./users/{student_id}/output/R{TEST_REGION}_labels.png')
+    # np.save("R1_updated_labels.npy", updated_labels)
 
     # need to remake labels after getting updated labels
     remake_data(updated_labels, TEST_REGION)
@@ -460,10 +476,11 @@ def train(TEST_REGION, student_id):
                 print("Saving Model")
                 torch.save({'epoch': epoch + 1,  # when resuming, we will start at the next epoch
                             'model': model.state_dict(),
-                            'optimizer': optimizer.state_dict()}, 
-                            f"./saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{epoch+1}.ckpt")
+                            'optimizer': optimizer.state_dict()},
+                            f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{epoch+1}.ckpt")
+                
     
-    with open(f"./resume_epoch_{student_id}.txt", 'w') as file:
+    with open(f"./users/{student_id}/resume_epoch/R{TEST_REGION}.txt", 'w') as file:
         file.write(str(resume_epoch))
     
     # call AL pipeline once the model is retrained
@@ -473,7 +490,23 @@ def train(TEST_REGION, student_id):
 
 def run_prediction(TEST_REGION, student_id, updated_labels = None):
 
-    return # TODO: remove after test
+    if not os.path.exists(f"./users/{student_id}"):
+        os.mkdir(f"./users/{student_id}")
+
+    if not os.path.exists(f"./users/{student_id}/output"):
+        os.mkdir(f"./users/{student_id}/output")
+
+    if not os.path.exists(f"./users/{student_id}/saved_models_forest"):
+        os.mkdir(f"./users/{student_id}/saved_models_forest")
+    
+    if not os.path.exists(f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST"):
+        os.mkdir(f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST")
+    
+    if not os.path.exists(f"./users/{student_id}/resume_epoch"):
+        os.mkdir(f"./users/{student_id}/resume_epoch")
+
+
+    # return # TODO: remove after test
 
 
     start = time.time()
@@ -481,7 +514,7 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
 
     # read resume epoch from text file if exists
     try:
-        with open(f"./resume_epoch_{student_id}.txt", 'r') as file:
+        with open(f"./users/{student_id}/resume_epoch/R{TEST_REGION}.txt", 'r') as file:
             content = file.read()
             resume_epoch = int(content) 
     except FileNotFoundError:
@@ -505,12 +538,16 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
     criterion = torch.nn.MSELoss(reduction = 'sum')
     elev_eval = Evaluator()
 
-    model_path = f"./saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
-    if os.path.exists(model_path):
-        checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
-        model.load_state_dict(checkpoint['model'])
-        pretrained_epoch = checkpoint['epoch']
-        print(f"Resuming from epoch {pretrained_epoch}")
+    model_path = f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
+    if not os.path.exists(model_path):
+        print("Model path doesn't exist; using pretrained model!!!")
+        model_path = f"./saved_models_forest/initial_model/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
+    
+    checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
+    model.load_state_dict(checkpoint['model'])
+    pretrained_epoch = checkpoint['epoch']
+    print(f"Resuming from epoch {pretrained_epoch}")
+
     
     ## Model gets set to evaluation mode
     model.eval()
@@ -519,6 +556,7 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
     META_DATA = get_meta_data(DATASET_PATH)
     
     ## Run prediciton
+    # TODO: this should also have a student_id folder
     cropped_data_path_al = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
     test_dataset = get_dataset_al(cropped_data_path_al, config.IN_CHANNEL)
 
@@ -539,13 +577,13 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
         pred_forest[forest_pixels] = 1
         pred_forest[not_forest_pixels] = 0
 
-    np.save("./R1_pred_np.npy", pred_forest)
+    np.save(f"./users/{student_id}/output/R{TEST_REGION}_pred_np.npy", pred_forest)
 
     pred_forest = pred_forest.astype("float32")
     new_arr = np.zeros((pred_forest.shape[0], pred_forest.shape[1], 3), dtype=np.uint8)
     new_arr[:,:,1] = pred_forest*128
 
-    plt.imsave('./R1_pred_test.png', new_arr)
+    plt.imsave(f'./users/{student_id}/output/R{TEST_REGION}_pred_test.png', new_arr)
 
 
     # forest = np.where(pred_unpadded < 0.5, 1, 0)

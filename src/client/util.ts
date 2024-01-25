@@ -34,6 +34,7 @@ import {
     labelsTexture,
     retrainSession,
     testRegion,
+    student_id
 } from './client'
 import { terrainDimensions } from './constants'
 import * as JSZip from 'jszip'
@@ -688,12 +689,21 @@ function hideModal() {
     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
     ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'block'
     let userId = (document.getElementById('studentId') as HTMLInputElement).value
-    sessionData.name = userId
-    if (userId == ""){
+
+    if (userId != student_id || userId == ""){
         alert("Please provide your correct student id!")
         ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
         ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'none'
     }
+    else{
+        sessionData.name = userId
+    }
+    
+    // if (userId == ""){
+    //     alert("Please provide your correct student id!")
+    //     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+    //     ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'none'
+    // }
     
     startSession()
 }

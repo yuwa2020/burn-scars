@@ -92,6 +92,7 @@ const urlParams = new URLSearchParams(window.location.search);
 
 // Retrieve the value of the 'region_id' parameter
 const testRegion = urlParams.get('region');
+const student_id = urlParams.get('student_id');
 
 // Use the parameter value in your code
 if (testRegion) {
@@ -1956,7 +1957,7 @@ fetch(elevationUrl)
                     mesh.position.set(0, 0, -100)
                     scene.add(mesh)
 
-                    const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${1}&testRegion=${testRegion}`).then(response => response.arrayBuffer());
+                    const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${1}&testRegion=${testRegion}&taskId=${student_id}`).then(response => response.arrayBuffer());
                     console.log("arraybuffer: ", predBuffer)
 
                     // Convert ArrayBuffer to base64
@@ -2157,5 +2158,6 @@ export {
     forestMapTexture,
     labelsTexture,
     retrainSession,
-    testRegion
+    testRegion,
+    student_id
 }

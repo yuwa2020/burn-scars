@@ -65,7 +65,7 @@ def stl():
     if request.method == 'POST':
         f = request.files['file']
         f.save(f.filename)
-#         subprocess.check_output(['./hmm', f.filename, 'a.stl', '-z', '500', '-t', '10000000'])
+        # subprocess.check_output(['./hmm', f.filename, f'Region_{TEST_REGION}.stl', '-z', '500', '-t', '10000000'])
         payload = make_response(send_file(f'Region_{TEST_REGION}.stl'))
         payload.headers.add('Access-Control-Allow-Origin', '*')
         # os.remove('a.stl')
@@ -82,9 +82,9 @@ def pred():
 
     if predict:
         run_prediction(TEST_REGION, student_id)
-        payload = make_response(send_file(f'R{TEST_REGION}_pred_test.png'))
+        payload = make_response(send_file(f'./users/{student_id}/output/R{TEST_REGION}_pred_test.png'))
     else:
-        payload = make_response(send_file(f'R{TEST_REGION}_pred_test.png'))
+        payload = make_response(send_file(f'./users/{student_id}/output/R{TEST_REGION}_pred_test.png'))
     
     payload.headers.add('Access-Control-Allow-Origin', '*')
     return payload
@@ -96,12 +96,18 @@ def retrain():
     file = request.files.get('image')
     TEST_REGION = int(request.args.get('testRegion', 1))
 
+    if not os.path.exists(f"./users/{student_id}"):
+        os.mkdir(f"./users/{student_id}")
+
+    if not os.path.exists(f"./users/{student_id}/output"):
+        os.mkdir(f"./users/{student_id}/output")
+
     if file:
         print('image is here')
         # file = request.files['image']
 
         # Process the file as needed, for example, save it to the server
-        file.save(f'./R{TEST_REGION}_labels.png')
+        file.save(f'./users/{student_id}/output/R{TEST_REGION}_labels.png')
 
         train(TEST_REGION, student_id)
 
