@@ -11,6 +11,6 @@
     },
     "include": ["**/*.ts"],
     "watchOptions": {
-        "excludeFiles": ["scripts"]
+        "excludeFiles": ["../../public/scripts"]
       }
 }
