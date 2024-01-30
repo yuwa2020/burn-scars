@@ -631,21 +631,22 @@ const viewFolder = gui.addFolder('Settings')
 //         viewFolder.updateDisplay()
 //     })
 //     .name('Annotate Dry Area')
-if (metaState.flat == 0) {
-    viewFolder
-        .add(params, 'dimension')
-        .onChange(() => {
-            scene.remove(scene.children[0])
-            if (params.dimension) {
-                uniforms.z.value = 500
-                scene.add(meshes[3])
-            } else {
-                uniforms.z.value = 0
-                scene.add(meshes[2])
-            }
-        })
-        .name('3D View')
-}
+
+// if (metaState.flat == 0) {
+//     viewFolder
+//         .add(params, 'dimension')
+//         .onChange(() => {
+//             scene.remove(scene.children[0])
+//             if (params.dimension) {
+//                 uniforms.z.value = 500
+//                 scene.add(meshes[3])
+//             } else {
+//                 uniforms.z.value = 0
+//                 scene.add(meshes[2])
+//             }
+//         })
+//         .name('3D View')
+// }
 
 
 // saugat
