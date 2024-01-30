@@ -339,7 +339,7 @@ def main(TEST_REGION):
 if __name__ == "__main__":
     # TEST_REGION = 2
 
-    TEST_REGIONS = [3, 5, 6, 7, 8, 9]
+    TEST_REGIONS = [1, 2, 3, 6, 9]
 
     for TEST_REGION in TEST_REGIONS:
         main(TEST_REGION)
