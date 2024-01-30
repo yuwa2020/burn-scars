@@ -163,3 +163,7 @@ cython_debug/
 *.tiff
 *.ckpt
 a.stl
+stl.zip
+repo.zip
+
+.DS_Store

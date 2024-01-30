@@ -9,8 +9,5 @@
             "@tweenjs/tween.js": ["../../typings/tween.js"]
         }
     },
-    "include": ["**/*.ts"],
-    "watchOptions": {
-        "excludeFiles": ["../../public/scripts"]
-      }
+    "include": ["**/*.ts"]
 }
