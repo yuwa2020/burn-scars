@@ -33,8 +33,8 @@ import {
     forestMapTexture, 
     labelsTexture,
     retrainSession,
-    testRegion,
-    student_id
+    // testRegion,
+    // student_id
 } from './client'
 import { terrainDimensions } from './constants'
 import * as JSZip from 'jszip'
@@ -51,6 +51,7 @@ type ObjectKeyUniforms = keyof typeof uniforms
 
 interface sessionDataType {
     name: string
+    testRegion: string
     sessionStart: Date | null
     sessionEnd: Date | null
     'totalSessionTime_M:S:MS': string
@@ -155,6 +156,7 @@ if (metaState.quadrant == 1) {
 
 const sessionData: sessionDataType = {
     name: 'anonymous',
+    testRegion: "1",
     sessionStart: null,
     sessionEnd: null,
     'totalSessionTime_M:S:MS': '0:0:0',
@@ -443,12 +445,12 @@ function downloadPredictionSession(event: Event) {
     // const _metaFileName = 'meta_session_' + sessionData.name + '.json'
     // // download(_metaFileName, _metadata)
     // zip.file(_metaFileName, _metadata)
-    let imageName = 'AL_prediction.png'
+    let imageName = 'Forest_Map.png'
     if (sessionData.name) {
-        imageName = 'AL_prediction_' + sessionData.name + '.png'
+        imageName = 'Forest_Map_' + sessionData.name + '.png'
     }
 
-    var url = predCanvas.toDataURL()
+    var url = annCanvas.toDataURL()
     var index = url.indexOf(',')
     if (index !== -1) {
         url = url.substring(index + 1, url.length)
@@ -689,21 +691,32 @@ function hideModal() {
     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
     ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'block'
     let userId = (document.getElementById('studentId') as HTMLInputElement).value
+    let testRegion = (document.getElementById('testRegion') as HTMLInputElement).value
 
-    if (userId != student_id || userId == ""){
+    // if (userId != student_id || userId == ""){
+    //     alert("Please provide your correct student id!")
+    //     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+    //     ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'none'
+    // }
+    // else{
+    //     sessionData.name = userId
+    //     sessionData.testRegion = testRegion
+    // }
+    
+    if (userId == ""){
         alert("Please provide your correct student id!")
+        ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+        ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'none'
+    }
+    else if (testRegion == ""){
+        alert("Please provide the correct Test Region ID!")
         ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
         ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'none'
     }
     else{
         sessionData.name = userId
+        sessionData.testRegion = testRegion
     }
-    
-    // if (userId == ""){
-    //     alert("Please provide your correct student id!")
-    //     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
-    //     ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'none'
-    // }
     
     startSession()
 }
@@ -838,9 +851,9 @@ function setActiveButton2(event: MouseEvent) {
 
 function init() {
     // document.getElementById('start')?.addEventListener('click', startSession)
-    document.getElementById('end')?.addEventListener('click', endSession)
-    document.getElementById('download')?.addEventListener('click', downloadSession)
-    document.getElementById('checkpoint')?.addEventListener('click', checkpoint)
+    // document.getElementById('end')?.addEventListener('click', endSession)
+    // document.getElementById('download')?.addEventListener('click', downloadSession)
+    // document.getElementById('checkpoint')?.addEventListener('click', checkpoint)
     document.getElementById('exploration')?.addEventListener('click', hideModal)
     document.getElementById('retrain')?.addEventListener('click', retrainSession) // saugat
     document.getElementById('download_pred')?.addEventListener('click', downloadPredictionSession) // saugat

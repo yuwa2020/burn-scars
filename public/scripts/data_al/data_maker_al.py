@@ -274,7 +274,7 @@ def make_data(feature_files, feature_data_path, label_data_path, reg_nums):
             # print("feature_data.shape: ", feature_data.shape)
 
             ## Load label data:
-            label_file = feature_file[:8]+"_GT_Labels.npy"
+            label_file = feature_file[:8]+"_forest.npy"
             # print(label_file)
 
             try:
@@ -337,6 +337,9 @@ def main(TEST_REGION):
     move_files(TEST_REGION)
 
 if __name__ == "__main__":
-    TEST_REGION = 2
+    # TEST_REGION = 2
 
-    main(TEST_REGION)
+    TEST_REGIONS = [3, 5, 6, 7, 8, 9]
+
+    for TEST_REGION in TEST_REGIONS:
+        main(TEST_REGION)

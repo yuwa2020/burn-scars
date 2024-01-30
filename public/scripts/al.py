@@ -353,7 +353,7 @@ def train(TEST_REGION, student_id):
 
     model_path = f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
     if not os.path.exists(model_path):
-        model_path = f"./saved_models_forest/initial_model/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
+        model_path = f"./saved_models_forest/initial_model/saved_model_forest_{resume_epoch}.ckpt"
 
     checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
     model.load_state_dict(checkpoint['model'])
@@ -383,8 +383,11 @@ def train(TEST_REGION, student_id):
     early_stop = EarlyStopping(patience=7) # TODO: this should be a parameter
     VAL_FREQUENCY = 1
 
-    for epoch in range(resume_epoch, resume_epoch + config.EPOCHS):
-        print(f"EPOCH: {epoch}/{resume_epoch+config.EPOCHS} \r")
+    total_epochs = resume_epoch + config.EPOCHS
+
+    last_epoch = resume_epoch
+    for epoch in range(resume_epoch, total_epochs):
+        print(f"EPOCH: {epoch}/{total_epochs} \r")
         ## Model gets set to training mode
         model.train()
         al_loss = 0 
@@ -424,60 +427,68 @@ def train(TEST_REGION, student_id):
 
         al_loss /= len(al_loader)
         al_loss_dict[epoch+1] = al_loss
+        last_epoch = epoch + 1
         print(f"Epoch: {epoch+1} AL Loss: {al_loss}" )
-        
-        #=====================================================================================
     
-        ## Do model validation for epochs that match VAL_FREQUENCY
-        if (epoch+1)%VAL_FREQUENCY == 0:    
 
-            ## Model gets set to evaluation mode
-            model.eval()
-            val_loss = 0 
+    print("Saving Model")
+    torch.save({'epoch': epoch + 1,  # when resuming, we will start at the next epoch
+                'model': model.state_dict(),
+                'optimizer': optimizer.state_dict()},
+                f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{last_epoch}.ckpt")
+        
+#         #=====================================================================================
+    
+#         ## Do model validation for epochs that match VAL_FREQUENCY
+#         if (epoch+1)%VAL_FREQUENCY == 0:    
 
-            print("Starting Evaluation")
+#             ## Model gets set to evaluation mode
+#             model.eval()
+#             val_loss = 0 
 
-            for data_dict in tqdm(al_loader):
+#             print("Starting Evaluation")
 
-                ## RGB data
-                rgb_data = data_dict['rgb_data'].float().to(DEVICE)
-                ## Elevation data
-                # elev_data = data_dict['elev_data'].float().to(DEVICE)
-                # norm_elev_data = data_dict['norm_elev_data'].float().to(DEVICE)
-                ## Data labels
-                labels = data_dict['labels_forest'].long().to(DEVICE)
+#             for data_dict in tqdm(al_loader):
 
-                ## Get model prediction
-                pred = model(rgb_data)
+#                 ## RGB data
+#                 rgb_data = data_dict['rgb_data'].float().to(DEVICE)
+#                 ## Elevation data
+#                 # elev_data = data_dict['elev_data'].float().to(DEVICE)
+#                 # norm_elev_data = data_dict['norm_elev_data'].float().to(DEVICE)
+#                 ## Data labels
+#                 labels = data_dict['labels_forest'].long().to(DEVICE)
+
+#                 ## Get model prediction
+#                 pred = model(rgb_data)
                 
-#                 pred = F.log_softmax(pred, dim=1)
-#                 labels = F.softmax(labels, dim = 1)
-                # loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
-                loss = criterion.forward(pred, labels)
+# #                 pred = F.log_softmax(pred, dim=1)
+# #                 labels = F.softmax(labels, dim = 1)
+#                 # loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
+#                 loss = criterion.forward(pred, labels)
 
-                ## Record loss for batch
-                val_loss += loss.item()
+#                 ## Record loss for batch
+#                 val_loss += loss.item()
 
-            val_loss /= len(al_loader)
-            val_loss_dict[epoch+1] = val_loss
-            print(f"Epoch: {epoch+1} Validation Loss: {val_loss}" )
+#             val_loss /= len(al_loader)
+#             val_loss_dict[epoch+1] = val_loss
+#             print(f"Epoch: {epoch+1} Validation Loss: {val_loss}" )
             
             
-#             early_stop = EarlyStopping(patience=5)
+# #             early_stop = EarlyStopping(patience=5)
             
-            early_stop(val_loss)
-            if early_stop.early_stop:
-                print('Early stop!')
-                break
+#             early_stop(val_loss)
+#             if early_stop.early_stop:
+#                 print('Early stop!')
+#                 break
                 
-            if val_loss < min_val_loss:
-                resume_epoch = epoch + 1
-                min_val_loss = val_loss
-                print("Saving Model")
-                torch.save({'epoch': epoch + 1,  # when resuming, we will start at the next epoch
-                            'model': model.state_dict(),
-                            'optimizer': optimizer.state_dict()},
-                            f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{epoch+1}.ckpt")
+#             if val_loss < min_val_loss:
+#                 resume_epoch = epoch + 1
+#                 min_val_loss = val_loss
+#                 print("Saving Model")
+#                 torch.save({'epoch': epoch + 1,  # when resuming, we will start at the next epoch
+#                             'model': model.state_dict(),
+#                             'optimizer': optimizer.state_dict()},
+#                             f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{epoch+1}.ckpt")
                 
     
     with open(f"./users/{student_id}/resume_epoch/R{TEST_REGION}.txt", 'w') as file:
@@ -533,15 +544,12 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
 
     ######### Pixel Selection using Active Learning #######################
     model = UNet(config.IN_CHANNEL, config.N_CLASSES, ultrasmall = True).to(DEVICE)
-    optimizer = SGD(model.parameters(), lr = 1e-7)
-    # criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index = 0)
-    criterion = torch.nn.MSELoss(reduction = 'sum')
-    elev_eval = Evaluator()
+
 
     model_path = f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
     if not os.path.exists(model_path):
         print("Model path doesn't exist; using pretrained model!!!")
-        model_path = f"./saved_models_forest/initial_model/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
+        model_path = f"./saved_models_forest/initial_model/saved_model_forest_0.ckpt"
     
     checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
     model.load_state_dict(checkpoint['model'])
@@ -553,7 +561,7 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
     model.eval()
     pred_patches_dict = dict()
 
-    META_DATA = get_meta_data(DATASET_PATH)
+    # META_DATA = get_meta_data(DATASET_PATH)
     
     ## Run prediciton
     # TODO: this should also have a student_id folder

@@ -91,16 +91,16 @@ document.body.appendChild(stats_mb.domElement)
 const urlParams = new URLSearchParams(window.location.search);
 
 // Retrieve the value of the 'region_id' parameter
-const testRegion = urlParams.get('region');
-const student_id = urlParams.get('student_id');
+// const testRegion = urlParams.get('region');
+// const student_id = urlParams.get('student_id');
 
-// Use the parameter value in your code
-if (testRegion) {
-  console.log('Region ID:', testRegion);
-  // Perform actions based on the testRegion
-} else {
-  console.log('No region ID specified.');
-}
+// // Use the parameter value in your code
+// if (testRegion) {
+//   console.log('Region ID:', testRegion);
+//   // Perform actions based on the testRegion
+// } else {
+//   console.log('No region ID specified.');
+// }
 
 
 const thresholdSlider = document.getElementById('thresholdSlider') as HTMLInputElement;
@@ -164,7 +164,7 @@ function hideLoadingScreen(){
 
 // Function to poll the backend
 async function pollBackendTask(taskId: string) {
-    const response = await fetch(`http://127.0.0.1:5005/check-status?taskId=${taskId}&testRegion=${testRegion}`);
+    const response = await fetch(`http://127.0.0.1:5005/check-status?taskId=${taskId}&testRegion=${sessionData.testRegion}`);
     const data = await response.json();
 
     console.log("data: ", data)
@@ -177,7 +177,7 @@ async function pollBackendTask(taskId: string) {
         // forestMapTexture.needsUpdate = true;
   
         // Continue with other actions on the frontend
-        const superpixelBuffer = await fetch(`http://127.0.0.1:5005/superpixel?recommend=${0}&testRegion=${testRegion}`).then(response => response.arrayBuffer());
+        const superpixelBuffer = await fetch(`http://127.0.0.1:5005/superpixel?recommend=${0}&testRegion=${sessionData.testRegion}`).then(response => response.arrayBuffer());
         console.log("superpixelBuffer: ", superpixelBuffer)
 
         // Convert ArrayBuffer to base64
@@ -204,7 +204,7 @@ async function pollBackendTask(taskId: string) {
         superpixelContext!.drawImage(imgSuperpixel, 0, 0);
         superpixelTexture.needsUpdate = true // saugat
 
-        const predBuffer = await fetch(`http://127.0.0.1:5005/pred?taskId=${taskId}&testRegion=${testRegion}`).then(response => response.arrayBuffer());
+        const predBuffer = await fetch(`http://127.0.0.1:5005/pred?taskId=${taskId}&testRegion=${sessionData.testRegion}`).then(response => response.arrayBuffer());
         console.log("arraybuffer: ", predBuffer)
 
         // Convert ArrayBuffer to base64
@@ -285,6 +285,7 @@ async function retrainSession(event: Event) {
     formData.append('image', dataURLFile);
 
     const taskId = encodeURIComponent(sessionData.name);
+    const testRegion = encodeURIComponent(sessionData.testRegion);
 
     // Send a POST request to the Flask backend
     showLoadingScreen();
@@ -1557,501 +1558,510 @@ async function startUp() {
     // document.getElementById('thresholdSlider')?.addEventListener('input', updateCanvas)
 }
 
-// var diffuseTexture : THREE.Texture
-// var texContext : CanvasRenderingContext2D
-// ;document.getElementById('submit')!.addEventListener('click', function(e) {
-//     e.preventDefault()
-//     if ((document.getElementById('stl') as HTMLInputElement).files![0]) {
-//         let file = (document.getElementById('stl') as HTMLInputElement).files![0]
-//         if (file.type == "image/png") {
-//             ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
-//             ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
-//             let fr = new FileReader()
-//             fr.onload = async function (e) {
-//                 let image = document.createElement('img')
-//                 image.src = e.target!.result as string
-//                 image.onload = function() { 
-//                     regionBounds = [0, image.width, 0, image.height]
-//                     regionDimensions = [image.width, image.height]
-//                     controls.target = new THREE.Vector3(regionDimensions[0] / 2, regionDimensions[1] / 2, -2000)
-
-//                     var texCanvas = document.createElement('canvas')
-//                     texCanvas.width = image.width
-//                     texCanvas.height = image.height
-//                     texContext = texCanvas.getContext('2d')!
-
-//                     diffuseTexture = new THREE.Texture(texCanvas)
-
-//                     // var annCanvas = document.createElement('canvas')
-//                     annCanvas.width = image.width
-//                     annCanvas.height = image.height
-
-//                     // var predCanvas = document.createElement('canvas')
-//                     predCanvas.width = image.width
-//                     predCanvas.height = image.height
-//                     predContext = predCanvas.getContext('2d', {willReadFrequently: true})!
-
-//                     // var superpixelCanvas = document.createElement('canvas')
-//                     superpixelCanvas.width = image.width
-//                     superpixelCanvas.height = image.height
-//                     superpixelContext = superpixelCanvas.getContext('2d')!
-
-//                     // var confidenceCanvas = document.createElement('canvas')
-//                     confidenceCanvas.width = image.width
-//                     confidenceCanvas.height = image.height
-//                     confidenceContext = confidenceCanvas.getContext('2d')!
-
-//                     context = annCanvas.getContext('2d')!
-                    
-//                     labelsCanvas.width = image.width
-//                     labelsCanvas.height = image.height
-//                     labelsContext = labelsCanvas.getContext('2d')!
-
-//                     forestMapTexture = new THREE.Texture(annCanvas)
-//                     labelsTexture = new THREE.Texture(labelsCanvas)
-
-//                     predictionTexture = new THREE.Texture(predCanvas) // saugat
-//                     superpixelTexture = new THREE.Texture(superpixelCanvas) // saugat
-//                     confidenceTexture = new THREE.Texture(confidenceCanvas) // saugat
-
-//                     uniforms.diffuseTexture.value = diffuseTexture
-//                     uniforms.forestMapTexture.value = forestMapTexture
-//                     uniforms.predictionTexture.value = predictionTexture // saugat
-//                     uniforms.labelsTexture.value = labelsTexture
-//                     uniforms.superpixelTexture.value = superpixelTexture // saugat
-//                     uniforms.confidenceTexture.value = confidenceTexture // saugat
-//                     const meshMaterial = new THREE.RawShaderMaterial({
-//                         uniforms: uniforms,
-//                         vertexShader: terrainShader._VS,
-//                         fragmentShader: terrainShader._FS,
-//                     })
-//                     texContext.drawImage(image, 0, 0)
-
-//                     // if (!(document.getElementById("topology") as HTMLInputElement).checked) {
-//                     //     var imageData = texContext!.getImageData(0, 0, image.width, image.height).data
-//                     //     let temp = []
-//                     //     for (let i = 0; i < imageData.length; i+=4) {
-//                     //         temp.push(imageData[i])
-//                     //     }
-//                     //     data = {0: temp}
-//                     // }
-
-//                     diffuseTexture.needsUpdate = true
-//                     forestMapTexture.needsUpdate = true
-//                     // predictionTexture.needsUpdate = true // saugat
-//                     uniforms.dimensions.value = [image.width, image.height]
-//                     var formData = new FormData();
-//                     formData.append('file', file);
-//                     ajax({
-//                         url: `http://127.0.0.1:5005/stl?testRegion=${testRegion}`,
-//                         type: 'POST',
-//                         data: formData,
-//                         processData: false,
-//                         contentType: false,
-//                         xhr: function() {
-//                             var xhr = new XMLHttpRequest()
-//                             xhr.responseType = 'blob'
-//                             return xhr
-//                         },
-//                         success: async function(data) {
-//                             const terrainLoader = new STLLoader()
-//                             try {
-//                                 var test = window.URL.createObjectURL(data)
-//                                 let response: THREE.BufferGeometry = await terrainLoader.loadAsync(
-//                                     test
-//                                 ) 
-//                                 mesh = new THREE.Mesh(response, meshMaterial)
-//                                 mesh.receiveShadow = true
-//                                 mesh.castShadow = true
-//                                 mesh.position.set(0, 0, -100)
-//                                 scene.add(mesh)
-
-//                                 const predBuffer = await fetch(`http://127.0.0.1:5005/predtaskId=${taskId}&?predict=${1}&testRegion=${testRegion}`).then(response => response.arrayBuffer());
-//                                 console.log("arraybuffer: ", predBuffer)
-
-//                                 // Convert ArrayBuffer to base64
-//                                 const base64ImagePred = arrayBufferToBase64(predBuffer)
-
-//                                 // Create an Image element
-//                                 const imgPred = new Image();
-//                                 const imgForest = new Image();
-
-//                                 // Set the source of the Image to the base64-encoded PNG data
-//                                 imgPred.src = 'data:image/png;base64,' + base64ImagePred;
-//                                 imgForest.src = 'data:image/png;base64,' + base64ImagePred;
-
-//                                 // Wait for the image to load
-//                                 imgPred.onload = () => {
-
-//                                     // Set canvas dimensions to match the image dimensions
-//                                     predCanvas.width = imgPred.width;
-//                                     predCanvas.height = imgPred.height;
-
-//                                     console.log("height: ", predCanvas.height)
-//                                     console.log("width: ", predCanvas.width)
-
-//                                     // Draw the image on the canvas
-//                                     predContext!.drawImage(imgPred, 0, 0);
-//                                     predictionTexture.needsUpdate = true // saugat
-//                                     // console.log("predictionTexture: ", predictionTexture)
-
-//                                     predDataOrig = predContext.getImageData(0, 0, predCanvas.width, predCanvas.height);
-//                                     // console.log("predDataOrig: ", predDataOrig.data);
-//                                 };
-
-//                                 // Wait for the image to load
-//                                 imgForest.onload = () => {
-
-//                                     // Set canvas dimensions to match the image dimensions
-//                                     annCanvas.width = imgForest.width;
-//                                     annCanvas.height = imgForest.height;
-
-//                                     console.log("height: ", annCanvas.height)
-//                                     console.log("width: ", annCanvas.width)
-
-//                                     context!.drawImage(imgForest, 0, 0);
-//                                     forestMapTexture.needsUpdate = true
-//                                 };
-
-                                
-//                             } catch (e) {
-//                                 console.error(`error on reading STL file a.stl`)
-//                             }                
-//                             ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
-//                             ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
-//                         },
-//                         error: function(xhr, status, error) {
-//                             ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
-//                             ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
-//                             console.log('Error uploading file: ' + error)
-//                         }
-//                     });
-//                 }
-//             }
-//             fr.readAsDataURL(file)
-//         } else {
-//             alert('Invalid file type, must be .png!')
-//         }
-//     } else {
-//         alert('No data uploaded!')
-//     }
-
-//     // For topology based segmentation
-//     // if ((document.getElementById('data') as HTMLInputElement).files![0] && (document.getElementById('topology') as HTMLInputElement).checked) {
-//     //     let file = (document.getElementById('data') as HTMLInputElement).files![0]
-//     //     if (file.type == "image/tiff") {
-//     //         ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
-//     //         ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
-//     //         var formData = new FormData();
-//     //         formData.append('file', file);
-//     //         ajax({
-//     //             url: `http://127.0.0.1:5005/topology?testRegion=${testRegion}`,
-//     //             type: 'POST',
-//     //             data: formData,
-//     //             processData: false,
-//     //             contentType: false,
-//     //             dataType: 'json',
-//     //             success: async function(d) {
-//     //                 console.log(d)
-//     //                 data = d['data']
-//     //                 for (var i = 0; i < pers.length; i++) {
-//     //                     var thresh = pers[i]
-//     //                     persDatas[thresh] = new Int16Array(d['segmentation'][thresh])
-//     //                     var max = 0
-//     //                     var imageData = new Uint8Array(4 * persDatas[thresh].length)
-//     //                     // segsToPixels2[thresh] = {}
-//     //                     var imageData2 = new Uint8Array(4 * data[thresh].length)
-//     //                     for (var x = 0; x < regionDimensions[0]; x++) {
-//     //                         for (var y = 0; y < regionDimensions[1]; y++) {
-//     //                             var segID = persDatas[thresh][x + y * regionDimensions[0]]
-//     //                             if (segID > max) {
-//     //                                 max = segID
-//     //                             }
-//     //                             imageData[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4] = Math.floor(segID / 1000)
-//     //                             imageData[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 1] = Math.floor((segID % 1000) / 100)
-//     //                             imageData[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 2] = Math.floor((segID % 100) / 10)
-//     //                             imageData[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 3] = segID % 10
-//     //                             // if (segsToPixels2[thresh][segID]) {
-//     //                             //     segsToPixels2[thresh][segID].push(x)
-//     //                             // } else {
-//     //                             //     segsToPixels2[thresh][segID] = [x]
-//     //                             // }
-//     //                             imageData2[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4] = Math.floor(255 * data[thresh][y * regionDimensions[0] + x])
-//     //                             imageData2[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 1] = Math.floor(255 * data[thresh][y * regionDimensions[0] + x])
-//     //                             imageData2[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 2] = Math.floor(255 * data[thresh][y * regionDimensions[0] + x])
-//     //                             imageData2[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 3] = 255
-//     //                         }
-//     //                     }
-//     //                     segsMax[thresh] = max
-//     //                     persTextures[thresh] = new THREE.DataTexture(
-//     //                         imageData,
-//     //                         regionDimensions[0],
-//     //                         regionDimensions[1]
-//     //                     )
-//     //                     persTextures[thresh].needsUpdate = true
-//     //                     dataTextures[thresh] = new THREE.DataTexture(
-//     //                         imageData2,
-//     //                         regionDimensions[0],
-//     //                         regionDimensions[1]
-//     //                     )
-//     //                     dataTextures[thresh].needsUpdate = true
-//     //                 } 
-//     //                 uniforms.dataTexture.value = dataTextures[persVal]
-//     //                 uniforms.persTexture.value = persTextures[persVal]
-//     //                 uniforms.segsMax.value = segsMax[persVal]
-//     //                 ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
-//     //                 ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
-//     //             },
-//     //             error: function(xhr, status, error) {
-//     //                 console.log(xhr)
-//     //                 ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
-//     //                 ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
-//     //                 console.log('Error uploading file: ' + error)
-//     //             }
-//     //         });
-//     //     } else {
-//     //         alert('Invalid file type, must be .tiff for data!')
-//     //     }
-//     // } 
-
-//     if ((document.getElementById('texture') as HTMLInputElement).files![0]) {
-//         let file = (document.getElementById('texture') as HTMLInputElement).files![0]
-//         if (file.type == "image/png") {
-//             ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
-//             ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
-//             let fr = new FileReader()
-//             fr.onload = async function (e) {
-//                 let image = document.createElement('img')
-//                 image.src = e.target!.result as string
-//                 image.onload = function() { 
-//                     texContext!.drawImage(image, 0, 0)
-//                 }
-//             }
-//             fr.readAsDataURL(file)
-//         } else {
-//             alert('Invalid file type, must be .png!')
-//         }
-//     }
-// })
-
-
-// Load static files (elevation and RGB png) from img folder based on regionId
-const elevationUrl = `${host}img/Region_${testRegion}_Elevation.png`;
-console.log("elevationUrl: ", elevationUrl)
-
 var diffuseTexture : THREE.Texture
 var texContext : CanvasRenderingContext2D
-
-fetch(elevationUrl)
-  .then(response => {
-    if (!response.ok) {
-      throw new Error(`Failed to fetch: ${elevationUrl}`);
+;document.getElementById('submit')!.addEventListener('click', function(e) {
+    let student_id = (document.getElementById('studentId') as HTMLInputElement).value
+    let testRegion = (document.getElementById('testRegion') as HTMLInputElement).value
+    
+    if (student_id == ""){
+        alert("Please provide your correct student id!")
+        ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+        ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'none'
+        return
     }
-    return response.blob();
-  })
-  .then(blob => {
-    ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
-    ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+    else if (testRegion == ""){
+        alert("Please provide the correct Test Region ID!")
+        ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+        ;(document.getElementById('ui-menu') as HTMLElement).style.display = 'none'
+        return
+    }
 
-    // Use the blob data (e.g., display the image)
-    const image = document.createElement('img');
-    image.src = URL.createObjectURL(blob);
 
-    image.onload = function() { 
-        regionBounds = [0, image.width, 0, image.height]
-        regionDimensions = [image.width, image.height]
-        controls.target = new THREE.Vector3(regionDimensions[0] / 2, regionDimensions[1] / 2, -2000)
+    e.preventDefault()
+    if ((document.getElementById('stl') as HTMLInputElement).files![0]) {
+        let file = (document.getElementById('stl') as HTMLInputElement).files![0]
+        if (file.type == "image/png") {
+            ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
+            ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+            let fr = new FileReader()
+            fr.onload = async function (e) {
+                let image = document.createElement('img')
+                image.src = e.target!.result as string
+                image.onload = function() { 
+                    regionBounds = [0, image.width, 0, image.height]
+                    regionDimensions = [image.width, image.height]
+                    controls.target = new THREE.Vector3(regionDimensions[0] / 2, regionDimensions[1] / 2, -2000)
 
-        var texCanvas = document.createElement('canvas')
-        texCanvas.width = image.width
-        texCanvas.height = image.height
-        texContext = texCanvas.getContext('2d')!
+                    var texCanvas = document.createElement('canvas')
+                    texCanvas.width = image.width
+                    texCanvas.height = image.height
+                    texContext = texCanvas.getContext('2d')!
 
-        console.log("width: ", image.width)
+                    diffuseTexture = new THREE.Texture(texCanvas)
 
-        diffuseTexture = new THREE.Texture(texCanvas)
+                    // var annCanvas = document.createElement('canvas')
+                    annCanvas.width = image.width
+                    annCanvas.height = image.height
 
-        // var annCanvas = document.createElement('canvas')
-        annCanvas.width = image.width
-        annCanvas.height = image.height
+                    // var predCanvas = document.createElement('canvas')
+                    predCanvas.width = image.width
+                    predCanvas.height = image.height
+                    predContext = predCanvas.getContext('2d', {willReadFrequently: true})!
 
-        // var predCanvas = document.createElement('canvas')
-        predCanvas.width = image.width
-        predCanvas.height = image.height
-        predContext = predCanvas.getContext('2d', {willReadFrequently: true})!
+                    // var superpixelCanvas = document.createElement('canvas')
+                    superpixelCanvas.width = image.width
+                    superpixelCanvas.height = image.height
+                    superpixelContext = superpixelCanvas.getContext('2d')!
 
-        // var superpixelCanvas = document.createElement('canvas')
-        superpixelCanvas.width = image.width
-        superpixelCanvas.height = image.height
-        superpixelContext = superpixelCanvas.getContext('2d')!
+                    // var confidenceCanvas = document.createElement('canvas')
+                    confidenceCanvas.width = image.width
+                    confidenceCanvas.height = image.height
+                    confidenceContext = confidenceCanvas.getContext('2d')!
 
-        // var confidenceCanvas = document.createElement('canvas')
-        confidenceCanvas.width = image.width
-        confidenceCanvas.height = image.height
-        confidenceContext = confidenceCanvas.getContext('2d')!
+                    context = annCanvas.getContext('2d')!
+                    
+                    labelsCanvas.width = image.width
+                    labelsCanvas.height = image.height
+                    labelsContext = labelsCanvas.getContext('2d')!
 
-        context = annCanvas.getContext('2d')!
+                    forestMapTexture = new THREE.Texture(annCanvas)
+                    labelsTexture = new THREE.Texture(labelsCanvas)
+
+                    predictionTexture = new THREE.Texture(predCanvas) // saugat
+                    superpixelTexture = new THREE.Texture(superpixelCanvas) // saugat
+                    confidenceTexture = new THREE.Texture(confidenceCanvas) // saugat
+
+                    uniforms.diffuseTexture.value = diffuseTexture
+                    uniforms.forestMapTexture.value = forestMapTexture
+                    uniforms.predictionTexture.value = predictionTexture // saugat
+                    uniforms.labelsTexture.value = labelsTexture
+                    uniforms.superpixelTexture.value = superpixelTexture // saugat
+                    uniforms.confidenceTexture.value = confidenceTexture // saugat
+                    const meshMaterial = new THREE.RawShaderMaterial({
+                        uniforms: uniforms,
+                        vertexShader: terrainShader._VS,
+                        fragmentShader: terrainShader._FS,
+                    })
+                    texContext.drawImage(image, 0, 0)
+
+                    // if (!(document.getElementById("topology") as HTMLInputElement).checked) {
+                    //     var imageData = texContext!.getImageData(0, 0, image.width, image.height).data
+                    //     let temp = []
+                    //     for (let i = 0; i < imageData.length; i+=4) {
+                    //         temp.push(imageData[i])
+                    //     }
+                    //     data = {0: temp}
+                    // }
+
+                    diffuseTexture.needsUpdate = true
+                    forestMapTexture.needsUpdate = true
+                    // predictionTexture.needsUpdate = true // saugat
+                    uniforms.dimensions.value = [image.width, image.height]
+                    var formData = new FormData();
+                    formData.append('file', file);
+                    ajax({
+                        url: `http://127.0.0.1:5005/stl?testRegion=${testRegion}`,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        xhr: function() {
+                            var xhr = new XMLHttpRequest()
+                            xhr.responseType = 'blob'
+                            return xhr
+                        },
+                        success: async function(data) {
+                            const terrainLoader = new STLLoader()
+                            try {
+                                var test = window.URL.createObjectURL(data)
+                                let response: THREE.BufferGeometry = await terrainLoader.loadAsync(
+                                    test
+                                ) 
+                                mesh = new THREE.Mesh(response, meshMaterial)
+                                mesh.receiveShadow = true
+                                mesh.castShadow = true
+                                mesh.position.set(0, 0, -100)
+                                scene.add(mesh)
+                                
+                                testRegion = encodeURIComponent(testRegion);
+                                student_id = encodeURIComponent(student_id);
+
+                                const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${1}&testRegion=${testRegion}&taskId=${student_id}`).then(response => response.arrayBuffer());
+                                console.log("arraybuffer: ", predBuffer)
+
+                                // Convert ArrayBuffer to base64
+                                const base64ImagePred = arrayBufferToBase64(predBuffer)
+
+                                // Create an Image element
+                                const imgPred = new Image();
+                                const imgForest = new Image();
+
+                                // Set the source of the Image to the base64-encoded PNG data
+                                imgPred.src = 'data:image/png;base64,' + base64ImagePred;
+                                imgForest.src = 'data:image/png;base64,' + base64ImagePred;
+
+                                // Wait for the image to load
+                                imgPred.onload = () => {
+
+                                    // Set canvas dimensions to match the image dimensions
+                                    predCanvas.width = imgPred.width;
+                                    predCanvas.height = imgPred.height;
+
+                                    console.log("height: ", predCanvas.height)
+                                    console.log("width: ", predCanvas.width)
+
+                                    // Draw the image on the canvas
+                                    predContext!.drawImage(imgPred, 0, 0);
+                                    predictionTexture.needsUpdate = true // saugat
+                                    // console.log("predictionTexture: ", predictionTexture)
+
+                                    predDataOrig = predContext.getImageData(0, 0, predCanvas.width, predCanvas.height);
+                                    // console.log("predDataOrig: ", predDataOrig.data);
+                                };
+
+                                // Wait for the image to load
+                                imgForest.onload = () => {
+
+                                    // Set canvas dimensions to match the image dimensions
+                                    annCanvas.width = imgForest.width;
+                                    annCanvas.height = imgForest.height;
+
+                                    console.log("height: ", annCanvas.height)
+                                    console.log("width: ", annCanvas.width)
+
+                                    context!.drawImage(imgForest, 0, 0);
+                                    forestMapTexture.needsUpdate = true
+                                };
+
+                                
+                            } catch (e) {
+                                console.error(`error on reading STL file a.stl`)
+                            }                
+                            ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
+                            ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+                        },
+                        error: function(xhr, status, error) {
+                            ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
+                            ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+                            console.log('Error uploading file: ' + error)
+                        }
+                    });
+                }
+            }
+            fr.readAsDataURL(file)
+        } else {
+            alert('Invalid file type, must be .png!')
+        }
+    } else {
+        alert('No data uploaded!')
+    }
+
+    // For topology based segmentation
+    // if ((document.getElementById('data') as HTMLInputElement).files![0] && (document.getElementById('topology') as HTMLInputElement).checked) {
+    //     let file = (document.getElementById('data') as HTMLInputElement).files![0]
+    //     if (file.type == "image/tiff") {
+    //         ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
+    //         ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+    //         var formData = new FormData();
+    //         formData.append('file', file);
+    //         ajax({
+    //             url: `http://127.0.0.1:5005/topology?testRegion=${testRegion}`,
+    //             type: 'POST',
+    //             data: formData,
+    //             processData: false,
+    //             contentType: false,
+    //             dataType: 'json',
+    //             success: async function(d) {
+    //                 console.log(d)
+    //                 data = d['data']
+    //                 for (var i = 0; i < pers.length; i++) {
+    //                     var thresh = pers[i]
+    //                     persDatas[thresh] = new Int16Array(d['segmentation'][thresh])
+    //                     var max = 0
+    //                     var imageData = new Uint8Array(4 * persDatas[thresh].length)
+    //                     // segsToPixels2[thresh] = {}
+    //                     var imageData2 = new Uint8Array(4 * data[thresh].length)
+    //                     for (var x = 0; x < regionDimensions[0]; x++) {
+    //                         for (var y = 0; y < regionDimensions[1]; y++) {
+    //                             var segID = persDatas[thresh][x + y * regionDimensions[0]]
+    //                             if (segID > max) {
+    //                                 max = segID
+    //                             }
+    //                             imageData[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4] = Math.floor(segID / 1000)
+    //                             imageData[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 1] = Math.floor((segID % 1000) / 100)
+    //                             imageData[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 2] = Math.floor((segID % 100) / 10)
+    //                             imageData[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 3] = segID % 10
+    //                             // if (segsToPixels2[thresh][segID]) {
+    //                             //     segsToPixels2[thresh][segID].push(x)
+    //                             // } else {
+    //                             //     segsToPixels2[thresh][segID] = [x]
+    //                             // }
+    //                             imageData2[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4] = Math.floor(255 * data[thresh][y * regionDimensions[0] + x])
+    //                             imageData2[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 1] = Math.floor(255 * data[thresh][y * regionDimensions[0] + x])
+    //                             imageData2[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 2] = Math.floor(255 * data[thresh][y * regionDimensions[0] + x])
+    //                             imageData2[(x + (regionDimensions[1] - y - 1) * regionDimensions[0]) * 4 + 3] = 255
+    //                         }
+    //                     }
+    //                     segsMax[thresh] = max
+    //                     persTextures[thresh] = new THREE.DataTexture(
+    //                         imageData,
+    //                         regionDimensions[0],
+    //                         regionDimensions[1]
+    //                     )
+    //                     persTextures[thresh].needsUpdate = true
+    //                     dataTextures[thresh] = new THREE.DataTexture(
+    //                         imageData2,
+    //                         regionDimensions[0],
+    //                         regionDimensions[1]
+    //                     )
+    //                     dataTextures[thresh].needsUpdate = true
+    //                 } 
+    //                 uniforms.dataTexture.value = dataTextures[persVal]
+    //                 uniforms.persTexture.value = persTextures[persVal]
+    //                 uniforms.segsMax.value = segsMax[persVal]
+    //                 ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
+    //                 ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+    //             },
+    //             error: function(xhr, status, error) {
+    //                 console.log(xhr)
+    //                 ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
+    //                 ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+    //                 console.log('Error uploading file: ' + error)
+    //             }
+    //         });
+    //     } else {
+    //         alert('Invalid file type, must be .tiff for data!')
+    //     }
+    // } 
+
+    if ((document.getElementById('texture') as HTMLInputElement).files![0]) {
+        let file = (document.getElementById('texture') as HTMLInputElement).files![0]
+        if (file.type == "image/png") {
+            ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
+            ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+            let fr = new FileReader()
+            fr.onload = async function (e) {
+                let image = document.createElement('img')
+                image.src = e.target!.result as string
+                image.onload = function() { 
+                    texContext!.drawImage(image, 0, 0)
+                }
+            }
+            fr.readAsDataURL(file)
+        } else {
+            alert('Invalid file type, must be .png!')
+        }
+    }
+})
+
+
+// // Load static files (elevation and RGB png) from img folder based on regionId
+// const elevationUrl = `${host}img/Region_${testRegion}_Elevation.png`;
+// console.log("elevationUrl: ", elevationUrl)
+
+// var diffuseTexture : THREE.Texture
+// var texContext : CanvasRenderingContext2D
+
+// fetch(elevationUrl)
+//   .then(response => {
+//     if (!response.ok) {
+//       throw new Error(`Failed to fetch: ${elevationUrl}`);
+//     }
+//     return response.blob();
+//   })
+//   .then(blob => {
+//     ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
+//     ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
+
+//     // Use the blob data (e.g., display the image)
+//     const image = document.createElement('img');
+//     image.src = URL.createObjectURL(blob);
+
+//     image.onload = function() { 
+//         regionBounds = [0, image.width, 0, image.height]
+//         regionDimensions = [image.width, image.height]
+//         controls.target = new THREE.Vector3(regionDimensions[0] / 2, regionDimensions[1] / 2, -2000)
+
+//         var texCanvas = document.createElement('canvas')
+//         texCanvas.width = image.width
+//         texCanvas.height = image.height
+//         texContext = texCanvas.getContext('2d')!
+
+//         console.log("width: ", image.width)
+
+//         diffuseTexture = new THREE.Texture(texCanvas)
+
+//         // var annCanvas = document.createElement('canvas')
+//         annCanvas.width = image.width
+//         annCanvas.height = image.height
+
+//         // var predCanvas = document.createElement('canvas')
+//         predCanvas.width = image.width
+//         predCanvas.height = image.height
+//         predContext = predCanvas.getContext('2d', {willReadFrequently: true})!
+
+//         // var superpixelCanvas = document.createElement('canvas')
+//         superpixelCanvas.width = image.width
+//         superpixelCanvas.height = image.height
+//         superpixelContext = superpixelCanvas.getContext('2d')!
+
+//         // var confidenceCanvas = document.createElement('canvas')
+//         confidenceCanvas.width = image.width
+//         confidenceCanvas.height = image.height
+//         confidenceContext = confidenceCanvas.getContext('2d')!
+
+//         context = annCanvas.getContext('2d')!
         
-        labelsCanvas.width = image.width
-        labelsCanvas.height = image.height
-        labelsContext = labelsCanvas.getContext('2d')!
+//         labelsCanvas.width = image.width
+//         labelsCanvas.height = image.height
+//         labelsContext = labelsCanvas.getContext('2d')!
 
-        forestMapTexture = new THREE.Texture(annCanvas)
-        labelsTexture = new THREE.Texture(labelsCanvas)
+//         forestMapTexture = new THREE.Texture(annCanvas)
+//         labelsTexture = new THREE.Texture(labelsCanvas)
 
-        predictionTexture = new THREE.Texture(predCanvas) // saugat
-        superpixelTexture = new THREE.Texture(superpixelCanvas) // saugat
-        confidenceTexture = new THREE.Texture(confidenceCanvas) // saugat
+//         predictionTexture = new THREE.Texture(predCanvas) // saugat
+//         superpixelTexture = new THREE.Texture(superpixelCanvas) // saugat
+//         confidenceTexture = new THREE.Texture(confidenceCanvas) // saugat
 
-        uniforms.diffuseTexture.value = diffuseTexture
-        uniforms.forestMapTexture.value = forestMapTexture
-        uniforms.predictionTexture.value = predictionTexture // saugat
-        uniforms.labelsTexture.value = labelsTexture
-        uniforms.superpixelTexture.value = superpixelTexture // saugat
-        uniforms.confidenceTexture.value = confidenceTexture // saugat
-        const meshMaterial = new THREE.RawShaderMaterial({
-            uniforms: uniforms,
-            vertexShader: terrainShader._VS,
-            fragmentShader: terrainShader._FS,
-        })
-        texContext.drawImage(image, 0, 0)
+//         uniforms.diffuseTexture.value = diffuseTexture
+//         uniforms.forestMapTexture.value = forestMapTexture
+//         uniforms.predictionTexture.value = predictionTexture // saugat
+//         uniforms.labelsTexture.value = labelsTexture
+//         uniforms.superpixelTexture.value = superpixelTexture // saugat
+//         uniforms.confidenceTexture.value = confidenceTexture // saugat
+//         const meshMaterial = new THREE.RawShaderMaterial({
+//             uniforms: uniforms,
+//             vertexShader: terrainShader._VS,
+//             fragmentShader: terrainShader._FS,
+//         })
+//         texContext.drawImage(image, 0, 0)
 
-        // if (!(document.getElementById("topology") as HTMLInputElement).checked) {
-        //     var imageData = texContext!.getImageData(0, 0, image.width, image.height).data
-        //     let temp = []
-        //     for (let i = 0; i < imageData.length; i+=4) {
-        //         temp.push(imageData[i])
-        //     }
-        //     data = {0: temp}
-        // }
+//         diffuseTexture.needsUpdate = true
+//         forestMapTexture.needsUpdate = true
+//         // predictionTexture.needsUpdate = true // saugat
+//         uniforms.dimensions.value = [image.width, image.height]
+//         var formData = new FormData();
 
-        diffuseTexture.needsUpdate = true
-        forestMapTexture.needsUpdate = true
-        // predictionTexture.needsUpdate = true // saugat
-        uniforms.dimensions.value = [image.width, image.height]
-        var formData = new FormData();
+//         // const file = new File([''], elevationUrl, { type: 'image/png' });
+//         formData.append('file', blob);
+//         ajax({
+//             // url: `http://127.0.0.1:5005/stl?testRegion=${testRegion}`,
+//             url: `http://127.0.0.1:5005/stl`,
+//             type: 'POST',
+//             data: formData,
+//             processData: false,
+//             contentType: false,
+//             xhr: function() {
+//                 var xhr = new XMLHttpRequest()
+//                 xhr.responseType = 'blob'
+//                 return xhr
+//             },
+//             success: async function(data) {
+//                 const terrainLoader = new STLLoader()
+//                 try {
+//                     var test = window.URL.createObjectURL(data)
+//                     let response: THREE.BufferGeometry = await terrainLoader.loadAsync(
+//                         test
+//                     ) 
+//                     mesh = new THREE.Mesh(response, meshMaterial)
+//                     mesh.receiveShadow = true
+//                     mesh.castShadow = true
+//                     mesh.position.set(0, 0, -100)
+//                     scene.add(mesh)
 
-        // const file = new File([''], elevationUrl, { type: 'image/png' });
-        formData.append('file', blob);
-        ajax({
-            url: `http://127.0.0.1:5005/stl?testRegion=${testRegion}`,
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            xhr: function() {
-                var xhr = new XMLHttpRequest()
-                xhr.responseType = 'blob'
-                return xhr
-            },
-            success: async function(data) {
-                const terrainLoader = new STLLoader()
-                try {
-                    var test = window.URL.createObjectURL(data)
-                    let response: THREE.BufferGeometry = await terrainLoader.loadAsync(
-                        test
-                    ) 
-                    mesh = new THREE.Mesh(response, meshMaterial)
-                    mesh.receiveShadow = true
-                    mesh.castShadow = true
-                    mesh.position.set(0, 0, -100)
-                    scene.add(mesh)
+//                     const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${1}&testRegion=${testRegion}&taskId=${student_id}`).then(response => response.arrayBuffer());
+//                     console.log("arraybuffer: ", predBuffer)
 
-                    const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${1}&testRegion=${testRegion}&taskId=${student_id}`).then(response => response.arrayBuffer());
-                    console.log("arraybuffer: ", predBuffer)
+//                     // Convert ArrayBuffer to base64
+//                     const base64ImagePred = arrayBufferToBase64(predBuffer)
 
-                    // Convert ArrayBuffer to base64
-                    const base64ImagePred = arrayBufferToBase64(predBuffer)
+//                     // Create an Image element
+//                     const imgPred = new Image();
+//                     const imgForest = new Image();
 
-                    // Create an Image element
-                    const imgPred = new Image();
-                    const imgForest = new Image();
+//                     // Set the source of the Image to the base64-encoded PNG data
+//                     imgPred.src = 'data:image/png;base64,' + base64ImagePred;
+//                     imgForest.src = 'data:image/png;base64,' + base64ImagePred;
 
-                    // Set the source of the Image to the base64-encoded PNG data
-                    imgPred.src = 'data:image/png;base64,' + base64ImagePred;
-                    imgForest.src = 'data:image/png;base64,' + base64ImagePred;
+//                     // Wait for the image to load
+//                     imgPred.onload = () => {
 
-                    // Wait for the image to load
-                    imgPred.onload = () => {
+//                         // Set canvas dimensions to match the image dimensions
+//                         predCanvas.width = imgPred.width;
+//                         predCanvas.height = imgPred.height;
 
-                        // Set canvas dimensions to match the image dimensions
-                        predCanvas.width = imgPred.width;
-                        predCanvas.height = imgPred.height;
+//                         console.log("height: ", predCanvas.height)
+//                         console.log("width: ", predCanvas.width)
 
-                        console.log("height: ", predCanvas.height)
-                        console.log("width: ", predCanvas.width)
+//                         // Draw the image on the canvas
+//                         predContext!.drawImage(imgPred, 0, 0);
+//                         predictionTexture.needsUpdate = true // saugat
+//                         // console.log("predictionTexture: ", predictionTexture)
 
-                        // Draw the image on the canvas
-                        predContext!.drawImage(imgPred, 0, 0);
-                        predictionTexture.needsUpdate = true // saugat
-                        // console.log("predictionTexture: ", predictionTexture)
+//                         predDataOrig = predContext.getImageData(0, 0, predCanvas.width, predCanvas.height);
+//                         // console.log("predDataOrig: ", predDataOrig.data);
+//                     };
 
-                        predDataOrig = predContext.getImageData(0, 0, predCanvas.width, predCanvas.height);
-                        // console.log("predDataOrig: ", predDataOrig.data);
-                    };
+//                     // Wait for the image to load
+//                     imgForest.onload = () => {
 
-                    // Wait for the image to load
-                    imgForest.onload = () => {
+//                         // Set canvas dimensions to match the image dimensions
+//                         annCanvas.width = imgForest.width;
+//                         annCanvas.height = imgForest.height;
 
-                        // Set canvas dimensions to match the image dimensions
-                        annCanvas.width = imgForest.width;
-                        annCanvas.height = imgForest.height;
+//                         console.log("height: ", annCanvas.height)
+//                         console.log("width: ", annCanvas.width)
 
-                        console.log("height: ", annCanvas.height)
-                        console.log("width: ", annCanvas.width)
-
-                        context!.drawImage(imgForest, 0, 0);
-                        forestMapTexture.needsUpdate = true
-                    };
+//                         context!.drawImage(imgForest, 0, 0);
+//                         forestMapTexture.needsUpdate = true
+//                     };
 
                     
-                } catch (e) {
-                    console.error(`error on reading STL file a.stl`)
-                }                
-                ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
-                ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
-            },
-            error: function(xhr, status, error) {
-                ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
-                ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
-                console.log('Error uploading file: ' + error)
-            }
-        });
-    }
+//                 } catch (e) {
+//                     console.error(`error on reading STL file a.stl`)
+//                 }                
+//                 ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
+//                 ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+//             },
+//             error: function(xhr, status, error) {
+//                 ;(document.getElementById('loader') as HTMLElement).style.display = 'none'
+//                 ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'block'
+//                 console.log('Error uploading file: ' + error)
+//             }
+//         });
+//     }
 
-    // document.body.appendChild(img);
-  })
-  .catch(error => console.error(error));
-
-
-const RGBUrl = `${host}img/Region_${testRegion}_RGB.png`;
-console.log("RGBUrl: ", RGBUrl)
+//     // document.body.appendChild(img);
+//   })
+//   .catch(error => console.error(error));
 
 
-fetch(RGBUrl)
-    .then(response => {
-    if (!response.ok) {
-        throw new Error(`Failed to fetch: ${RGBUrl}`);
-    }
-    return response.blob();
-    })
-    .then(blob => {
-        ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
-        ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
-
-        // Use the blob data (e.g., display the image)
-        const rgb = document.createElement('img');
-        rgb.src = URL.createObjectURL(blob);
-
-        rgb.onload = function() { 
-            texContext!.drawImage(rgb, 0, 0)
-        }
-    })
-
-    .catch(error => console.error(error));
+// const RGBUrl = `${host}img/Region_${testRegion}_RGB.png`;
+// console.log("RGBUrl: ", RGBUrl)
 
 
+// fetch(RGBUrl)
+//     .then(response => {
+//     if (!response.ok) {
+//         throw new Error(`Failed to fetch: ${RGBUrl}`);
+//     }
+//     return response.blob();
+//     })
+//     .then(blob => {
+//         ;(document.getElementById('loader') as HTMLElement).style.display = 'block'
+//         ;(document.getElementById('modal-wrapper') as HTMLElement).style.display = 'none'
 
+//         // Use the blob data (e.g., display the image)
+//         const rgb = document.createElement('img');
+//         rgb.src = URL.createObjectURL(blob);
+
+//         rgb.onload = function() { 
+//             texContext!.drawImage(rgb, 0, 0)
+//         }
+//     })
+
+//     .catch(error => console.error(error));
 
 
 
@@ -2158,6 +2168,6 @@ export {
     forestMapTexture,
     labelsTexture,
     retrainSession,
-    testRegion,
-    student_id
+    // testRegion,
+//     student_id
 }
