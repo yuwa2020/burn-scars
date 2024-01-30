@@ -851,7 +851,7 @@ function setActiveButton2(event: MouseEvent) {
 
 function init() {
     // document.getElementById('start')?.addEventListener('click', startSession)
-    // document.getElementById('end')?.addEventListener('click', endSession)
+    document.getElementById('end')?.addEventListener('click', endSession)
     // document.getElementById('download')?.addEventListener('click', downloadSession)
     // document.getElementById('checkpoint')?.addEventListener('click', checkpoint)
     document.getElementById('exploration')?.addEventListener('click', hideModal)

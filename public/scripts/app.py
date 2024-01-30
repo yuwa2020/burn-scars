@@ -64,7 +64,7 @@ def stl():
     TEST_REGION = int(request.args.get('testRegion', 1))
     print("TEST_REGION: ", TEST_REGION)
     if request.method == 'POST':
-        # f = request.files['file']
+        f = request.files['file']
         # f.save(f.filename)
         # subprocess.check_output(['./hmm', f.filename, f'./stl/Region_{TEST_REGION}.stl', '-z', '500', '-t', '10000000'])
         payload = make_response(send_file(f'./stl/Region_{TEST_REGION}.stl'))

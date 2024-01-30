@@ -538,7 +538,7 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
     VAL_FREQUENCY = 1
     SAVE_FREQUENCY = 1
 
-    gt_labels = np.load(f"./data_al/repo/groundTruths/Region_{TEST_REGION}_GT_Labels.npy")
+    gt_labels = np.load(f"./data_al/repo/groundTruths/Region_{TEST_REGION}_forest.npy")
     height, width = gt_labels.shape[0], gt_labels.shape[1]
 
 
