@@ -492,7 +492,7 @@ def train(TEST_REGION, student_id):
                 
     
     with open(f"./users/{student_id}/resume_epoch/R{TEST_REGION}.txt", 'w') as file:
-        file.write(str(resume_epoch))
+        file.write(str(last_epoch))
     
     # call AL pipeline once the model is retrained
     run_prediction(TEST_REGION, student_id, updated_labels = updated_labels)
