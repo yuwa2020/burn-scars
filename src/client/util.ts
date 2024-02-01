@@ -437,14 +437,7 @@ function downloadSession(event: Event) {
 
 function downloadPredictionSession(event: Event) {
     disposeUniform()
-    // const _data = JSON.stringify(gameState)
-    // const _fileName = 'session_' + sessionData.name + '.json'
-    // zip.file(_fileName, _data)
-    // // download(_fileName, _data)
-    // const _metadata = JSON.stringify(sessionData)
-    // const _metaFileName = 'meta_session_' + sessionData.name + '.json'
-    // // download(_metaFileName, _metadata)
-    // zip.file(_metaFileName, _metadata)
+
     let imageName = 'Forest_Map.png'
     if (sessionData.name) {
         imageName = 'Forest_Map_' + sessionData.name + '.png'
@@ -455,7 +448,34 @@ function downloadPredictionSession(event: Event) {
     if (index !== -1) {
         url = url.substring(index + 1, url.length)
     }
-    zip.file(imageName, url, { base64: true })
+    zip.file(imageName, url, { base64: true }) // forest map
+
+    let imageName2 = 'Annotation.png'
+    if (sessionData.name) {
+        imageName2 = 'Annotation_' + sessionData.name + '.png'
+    }
+
+    var url2 = labelsCanvas.toDataURL()
+    var index2 = url2.indexOf(',')
+    if (index2 !== -1) {
+        url2 = url2.substring(index2 + 1, url2.length)
+    }
+
+    zip.file(imageName2, url2, { base64: true }) // annotations (corrections)
+
+    let imageName3 = 'Prediction.png'
+    if (sessionData.name) {
+        imageName3 = 'Prediction_' + sessionData.name + '.png'
+    }
+
+    var url3 = predCanvas.toDataURL()
+    var index3 = url3.indexOf(',')
+    if (index3 !== -1) {
+        url3 = url3.substring(index3 + 1, url3.length)
+    }
+
+    zip.file(imageName3, url3, { base64: true }) // predictions 
+
     zip.generateAsync({
         type: 'base64',
     }).then(function (content) {
