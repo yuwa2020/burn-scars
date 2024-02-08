@@ -80,6 +80,15 @@ def pred():
     student_id = request.args.get('taskId')
     predict = int(request.args.get('predict', 0))
     TEST_REGION = int(request.args.get('testRegion', 1))
+    initial = int(request.args.get('initial', 0))
+
+    # to handle the situation where a user does AL for a while, terminated and starts again (all the process has to be completed in 1 go, there can be no break in between)
+    if initial:
+        try:
+            with open(f"./users/{student_id}/resume_epoch/R{TEST_REGION}.txt", 'w') as file:
+                file.write(str(0))
+        except FileNotFoundError:
+            pass
 
     if predict:
         run_prediction(TEST_REGION, student_id)

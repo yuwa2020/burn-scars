@@ -1688,7 +1688,7 @@ var texContext : CanvasRenderingContext2D
                                 testRegion = encodeURIComponent(testRegion);
                                 student_id = encodeURIComponent(student_id);
 
-                                const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${1}&testRegion=${testRegion}&taskId=${student_id}`).then(response => response.arrayBuffer());
+                                const predBuffer = await fetch(`http://127.0.0.1:5005/pred?predict=${1}&testRegion=${testRegion}&taskId=${student_id}&initial=${1}`).then(response => response.arrayBuffer());
                                 console.log("arraybuffer: ", predBuffer)
 
                                 // Convert ArrayBuffer to base64
