@@ -1,4 +1,4 @@
-name: testenv
+name: al_env
 channels:
   - conda-forge/label/cf201901
   - pytorch
@@ -213,4 +213,4 @@ dependencies:
       - virtualenv-clone==0.5.7
       - werkzeug==3.0.1
       - zipp==3.17.0
-prefix: /home/saugat/.conda/envs/testenv
+prefix: /home/BlazerId/.conda/envs/al_env
