@@ -161,9 +161,10 @@ cython_debug/
 *.npy
 *.tif
 *.tiff
-*.ckpt
 a.stl
 stl.zip
 repo.zip
 
 .DS_Store
+
+backend_code/users/*
