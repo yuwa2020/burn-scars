@@ -3,17 +3,18 @@ from torch.optim import Adam, SGD
 import time
 import asyncio
 
+import os
 import numpy as np
 
-from data.data import *
-from data_al.data_al_evanet import get_dataset_al
-from data_al.data_remaker_al import remake_data
+# from data.data import *
+from data.data_al import get_dataset_al
+from data.data_remaker_al import remake_data
 from unet_model import *
 from loss import *
 from metrics import *
+import config
 
 from tqdm import tqdm
-# from osgeo import gdal
 
 import matplotlib.pyplot as plt
 import cv2
@@ -24,6 +25,7 @@ import itertools
 import time
 from collections import defaultdict
 from PIL import Image
+from torch.utils.data import DataLoader
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(DEVICE)
@@ -42,16 +44,16 @@ def get_meta_data(DATASET_PATH):
         #print(file_height)
         #print(file_width)
 
-        elev_data = file[:, :, 3]
-        file_elev_max = np.max(elev_data)
-        file_elev_min = np.min(elev_data)
+        # elev_data = file[:, :, 3]
+        # file_elev_max = np.max(elev_data)
+        # file_elev_min = np.min(elev_data)
         # print(file_elev_max)
         # print(file_elev_min)
 
-        if file_elev_max>config.GLOBAL_MAX:
-            config.GLOBAL_MAX = file_elev_max
-        if file_elev_min<config.GLOBAL_MIN:
-            config.GLOBAL_MIN = file_elev_min
+        # if file_elev_max>config.GLOBAL_MAX:
+        #     config.GLOBAL_MAX = file_elev_max
+        # if file_elev_min<config.GLOBAL_MIN:
+        #     config.GLOBAL_MIN = file_elev_min
 
 
         META_DATA[file_name] = {"height": file_height,
@@ -71,7 +73,7 @@ def run_pred(model, data_loader):
         rgb_data = data_dict['rgb_data'].float().to(DEVICE)
 
         ## Data labels
-        labels = data_dict['labels_forest'].float().to(DEVICE)
+        labels = data_dict['labels'].float().to(DEVICE)
 
         ## Get filename
         filename = data_dict['filename']
@@ -114,7 +116,7 @@ def find_patch_meta(pred_patches_dict):
 
 
 def stitch_patches_GT_labels(pred_patches_dict, TEST_REGION):
-    cropped_data_path = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
+    cropped_data_path = f"./data/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
     y_max, x_max = find_patch_meta(pred_patches_dict)
     
     for i in range(y_max):
@@ -153,7 +155,7 @@ def stitch_patches_GT_labels(pred_patches_dict, TEST_REGION):
     return label_stitched, pred_stitched
 
 def stitch_patches_augmented(pred_patches_dict, TEST_REGION):
-    cropped_data_path = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
+    cropped_data_path = f"./data/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
     y_max, x_max = find_patch_meta(pred_patches_dict)
 
     for i in range(y_max):
@@ -187,7 +189,7 @@ def stitch_patches_augmented(pred_patches_dict, TEST_REGION):
     return rgb_stitched, pred_stitched
 
 def stitch_patches(pred_patches_dict, TEST_REGION):
-    cropped_data_path = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
+    cropped_data_path = f"./data/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
     y_max, x_max = find_patch_meta(pred_patches_dict)
     
     for i in range(y_max):
@@ -298,6 +300,7 @@ def convert_to_rgb(input_array):
     return rgb_image
 
 
+# TODO: check for index..................
 def ann_to_labels(png_image):
     ann = cv2.imread(png_image)
     ann = cv2.cvtColor(ann, cv2.COLOR_BGR2RGB)
@@ -309,11 +312,15 @@ def ann_to_labels(png_image):
     not_forest_arr = np.where(not_forest, -1, 0)
 
     final_arr = forest_arr + not_forest_arr
-    
+
+    final_arr[final_arr == 0] = -99
+    final_arr[final_arr == -1] = 0
+    final_arr[final_arr == -99] = -1
+
     return final_arr
 
 
-def train(TEST_REGION, student_id):
+def train(TEST_REGION, student_id, al_cycle):
     print("Retraining the Model with new labels")
 
     if not os.path.exists(f"./users/{student_id}"):
@@ -322,14 +329,17 @@ def train(TEST_REGION, student_id):
     if not os.path.exists(f"./users/{student_id}/output"):
         os.mkdir(f"./users/{student_id}/output")
 
-    if not os.path.exists(f"./users/{student_id}/saved_models_forest"):
-        os.mkdir(f"./users/{student_id}/saved_models_forest")
+    if not os.path.exists(f"./users/{student_id}/saved_models"):
+        os.mkdir(f"./users/{student_id}/saved_models")
     
-    if not os.path.exists(f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST"):
-        os.mkdir(f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST")
+    if not os.path.exists(f"./users/{student_id}/saved_models/Region_{TEST_REGION}_TEST"):
+        os.mkdir(f"./users/{student_id}/saved_models/Region_{TEST_REGION}_TEST")
 
     if not os.path.exists(f"./users/{student_id}/resume_epoch"):
         os.mkdir(f"./users/{student_id}/resume_epoch")
+    
+    if not os.path.exists(f"./users/{student_id}/al_cycles"):
+        os.mkdir(f"./users/{student_id}/al_cycles")
 
     # time.sleep(5)
     # return # TODO: remove after test
@@ -337,10 +347,7 @@ def train(TEST_REGION, student_id):
 
     model = UNet(config.IN_CHANNEL, config.N_CLASSES, ultrasmall = True).to(DEVICE)
     optimizer = SGD(model.parameters(), lr = 1e-7)
-    criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index=0)
-    # criterion = torch.nn.MSELoss(reduction = 'sum')
-#     criterion = torch.nn.BCELoss(reduction = 'sum')
-#     criterion = torch.nn.KLDivLoss(reduction="batchmean")
+    criterion = torch.nn.CrossEntropyLoss(reduction = 'sum', ignore_index=2)
     elev_eval = Evaluator()
 
     # read resume epoch from text file if exists
@@ -351,25 +358,27 @@ def train(TEST_REGION, student_id):
     except FileNotFoundError:
         resume_epoch = 0
 
-    model_path = f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
+    model_path = f"./users/{student_id}/saved_models/Region_{TEST_REGION}_TEST/saved_model_{resume_epoch}.ckpt"
     if not os.path.exists(model_path):
-        model_path = f"./saved_models_forest/initial_model/saved_model_forest_{resume_epoch}.ckpt"
+        print("Model path doesn't exist; using pretrained model!!!")
+        model_path = f"./saved_models/initial_model/saved_model_{resume_epoch}.ckpt"
 
+    # if os.path.exists(model_path):
     checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
     model.load_state_dict(checkpoint['model'])
     print(f"Resuming from epoch {resume_epoch}")
     
 
     updated_labels = ann_to_labels(f'./users/{student_id}/output/R{TEST_REGION}_labels.png')
-    # np.save("R1_updated_labels.npy", updated_labels)
+    np.save(f"R_{TEST_REGION}_updated_labels.npy", updated_labels)
 
     # need to remake labels after getting updated labels
     remake_data(updated_labels, TEST_REGION)
 
     # return
     
-    cropped_data_path_al = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
-    elev_val_test_dataset_al = get_dataset_al(cropped_data_path_al, config.IN_CHANNEL)
+    cropped_data_path_al = f"./data/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
+    elev_val_test_dataset_al = get_dataset_al(cropped_data_path_al)
     elev_val_test_seq = np.arange(0, len(elev_val_test_dataset_al), dtype=int)
     elev_val_test_dataset_al = torch.utils.data.Subset(elev_val_test_dataset_al, elev_val_test_seq)
     al_loader = DataLoader(elev_val_test_dataset_al, batch_size = config.BATCH_SIZE)
@@ -379,9 +388,6 @@ def train(TEST_REGION, student_id):
     al_loss_dict = dict()
     val_loss_dict = dict()
     min_val_loss = 1e10   
-    
-    early_stop = EarlyStopping(patience=7) # TODO: this should be a parameter
-    VAL_FREQUENCY = 1
 
     total_epochs = resume_epoch + config.EPOCHS
 
@@ -404,7 +410,7 @@ def train(TEST_REGION, student_id):
             ## Data labels
             Elev Loss function label format: Flood = 1, Unknown = 0, Dry = -1 
             """
-            labels = data_dict['labels_forest'].long().to(DEVICE)
+            labels = data_dict['labels'].long().to(DEVICE)
             labels.requires_grad = False  
 
             ## Get model prediction
@@ -435,71 +441,20 @@ def train(TEST_REGION, student_id):
     torch.save({'epoch': epoch + 1,  # when resuming, we will start at the next epoch
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict()},
-                f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{last_epoch}.ckpt")
-        
-#         #=====================================================================================
-    
-#         ## Do model validation for epochs that match VAL_FREQUENCY
-#         if (epoch+1)%VAL_FREQUENCY == 0:    
-
-#             ## Model gets set to evaluation mode
-#             model.eval()
-#             val_loss = 0 
-
-#             print("Starting Evaluation")
-
-#             for data_dict in tqdm(al_loader):
-
-#                 ## RGB data
-#                 rgb_data = data_dict['rgb_data'].float().to(DEVICE)
-#                 ## Elevation data
-#                 # elev_data = data_dict['elev_data'].float().to(DEVICE)
-#                 # norm_elev_data = data_dict['norm_elev_data'].float().to(DEVICE)
-#                 ## Data labels
-#                 labels = data_dict['labels_forest'].long().to(DEVICE)
-
-#                 ## Get model prediction
-#                 pred = model(rgb_data)
-                
-# #                 pred = F.log_softmax(pred, dim=1)
-# #                 labels = F.softmax(labels, dim = 1)
-#                 # loss = criterion.forward(pred, torch.unsqueeze(labels, dim=1))
-#                 loss = criterion.forward(pred, labels)
-
-#                 ## Record loss for batch
-#                 val_loss += loss.item()
-
-#             val_loss /= len(al_loader)
-#             val_loss_dict[epoch+1] = val_loss
-#             print(f"Epoch: {epoch+1} Validation Loss: {val_loss}" )
-            
-            
-# #             early_stop = EarlyStopping(patience=5)
-            
-#             early_stop(val_loss)
-#             if early_stop.early_stop:
-#                 print('Early stop!')
-#                 break
-                
-#             if val_loss < min_val_loss:
-#                 resume_epoch = epoch + 1
-#                 min_val_loss = val_loss
-#                 print("Saving Model")
-#                 torch.save({'epoch': epoch + 1,  # when resuming, we will start at the next epoch
-#                             'model': model.state_dict(),
-#                             'optimizer': optimizer.state_dict()},
-#                             f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{epoch+1}.ckpt")
-                
+                f"./users/{student_id}/saved_models/Region_{TEST_REGION}_TEST/saved_model_{last_epoch}.ckpt")
     
     with open(f"./users/{student_id}/resume_epoch/R{TEST_REGION}.txt", 'w') as file:
         file.write(str(last_epoch))
     
+    with open(f"./users/{student_id}/al_cycles/R{TEST_REGION}.txt", 'w') as file:
+        file.write(str(al_cycle + 1))
+    
     # call AL pipeline once the model is retrained
-    run_prediction(TEST_REGION, student_id, updated_labels = updated_labels)
+    run_prediction(TEST_REGION, student_id, updated_labels = updated_labels, al_cycle=al_cycle+1)
     
     return
 
-def run_prediction(TEST_REGION, student_id, updated_labels = None):
+def run_prediction(TEST_REGION, student_id, updated_labels = None, al_cycle=0):
 
     if not os.path.exists(f"./users/{student_id}"):
         os.mkdir(f"./users/{student_id}")
@@ -507,11 +462,11 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
     if not os.path.exists(f"./users/{student_id}/output"):
         os.mkdir(f"./users/{student_id}/output")
 
-    if not os.path.exists(f"./users/{student_id}/saved_models_forest"):
-        os.mkdir(f"./users/{student_id}/saved_models_forest")
+    if not os.path.exists(f"./users/{student_id}/saved_models"):
+        os.mkdir(f"./users/{student_id}/saved_models")
     
-    if not os.path.exists(f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST"):
-        os.mkdir(f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST")
+    if not os.path.exists(f"./users/{student_id}/saved_models/Region_{TEST_REGION}_TEST"):
+        os.mkdir(f"./users/{student_id}/saved_models/Region_{TEST_REGION}_TEST")
     
     if not os.path.exists(f"./users/{student_id}/resume_epoch"):
         os.mkdir(f"./users/{student_id}/resume_epoch")
@@ -521,7 +476,7 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
 
 
     start = time.time()
-    DATASET_PATH = "./data_al/repo/Features_7_Channels"
+    DATASET_PATH = "./data/repo/images"
 
     # read resume epoch from text file if exists
     try:
@@ -533,23 +488,33 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
 
     print("Starting from epoch: ", resume_epoch)
 
-    test_filename = f"Region_{TEST_REGION}_Features7Channel.npy"
+    test_filename = f"Region_{TEST_REGION}_image.npy"
 
-    VAL_FREQUENCY = 1
     SAVE_FREQUENCY = 1
 
-    gt_labels = np.load(f"./data_al/repo/groundTruths/Region_{TEST_REGION}_forest.npy")
+    features = np.load(f"./data/repo/images/Region_{TEST_REGION}_image.npy")
+    
+    if features.shape[0] == 3:
+        height, width = features.shape[1], features.shape[2]
+    else:
+        height, width = features.shape[0], features.shape[1]
+
+    try:
+        gt_labels = np.load(f"./data/repo/groundTruths/Region_{TEST_REGION}_GT_Labels.npy")
+    except FileNotFoundError:
+        gt_labels = np.zeros((height, width))
+
     height, width = gt_labels.shape[0], gt_labels.shape[1]
+    print("features.shape: ", features.shape)
 
 
-    ######### Pixel Selection using Active Learning #######################
     model = UNet(config.IN_CHANNEL, config.N_CLASSES, ultrasmall = True).to(DEVICE)
 
 
-    model_path = f"./users/{student_id}/saved_models_forest/Region_{TEST_REGION}_TEST/saved_model_forest_{resume_epoch}.ckpt"
+    model_path = f"./users/{student_id}/saved_models/Region_{TEST_REGION}_TEST/saved_model_{resume_epoch}.ckpt"
     if not os.path.exists(model_path):
         print("Model path doesn't exist; using pretrained model!!!")
-        model_path = f"./saved_models_forest/initial_model/saved_model_forest_0.ckpt"
+        model_path = f"./saved_models/initial_model/saved_model_0.ckpt"
     
     checkpoint = torch.load(model_path, map_location=torch.device(DEVICE))
     model.load_state_dict(checkpoint['model'])
@@ -564,9 +529,9 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
     # META_DATA = get_meta_data(DATASET_PATH)
     
     ## Run prediciton
-    # TODO: this should also have a student_id folder
-    cropped_data_path_al = f"./data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
-    test_dataset = get_dataset_al(cropped_data_path_al, config.IN_CHANNEL)
+    cropped_data_path_al = f"./data/Region_{TEST_REGION}_TEST/cropped_data_val_test_al"
+    # test_dataset = get_dataset_al(cropped_data_path_al, config.IN_CHANNEL)
+    test_dataset = get_dataset_al(cropped_data_path_al)
 
     test_loader = DataLoader(test_dataset, batch_size = config.BATCH_SIZE)
 
@@ -581,9 +546,11 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
 
     if updated_labels is not None:
         forest_pixels = np.where(updated_labels == 1)
-        not_forest_pixels = np.where(updated_labels == -1)
+        not_forest_pixels = np.where(updated_labels == 0)
         pred_forest[forest_pixels] = 1
         pred_forest[not_forest_pixels] = 0
+    
+    pred_labels = np.where(pred_forest > 0.5, 1, 0)
 
     np.save(f"./users/{student_id}/output/R{TEST_REGION}_pred_np.npy", pred_forest)
 
@@ -592,6 +559,27 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
     new_arr[:,:,1] = pred_forest*128
 
     plt.imsave(f'./users/{student_id}/output/R{TEST_REGION}_pred_test.png', new_arr)
+
+    elev_eval = Evaluator()
+
+    gt_labels = np.load(f"./data/repo/groundTruths/Region_{TEST_REGION}_GT_Labels.npy")
+    metrices = elev_eval.run_eval(pred_labels, gt_labels)
+
+    if updated_labels is None:
+        updated_labels = np.full((height, width), -1)
+
+    annotated_pixels = np.where(updated_labels != -1, 1, 0)
+    annotated_pixels_percent = (np.sum(annotated_pixels) / (updated_labels.shape[0] * updated_labels.shape[1])) * 100
+    print("Ann pixels percent: ", annotated_pixels_percent)
+
+    annotated_pixels_percent = float("{:.2f}".format(annotated_pixels_percent))
+
+    metrices += "\n"
+    metrices += f"Annotated Pixels: {annotated_pixels_percent} %"
+
+    file_path = f"./users/{student_id}/output/Region_{TEST_REGION}_Metrics_C{al_cycle}.txt"
+    with open(file_path, "w") as fp:
+        fp.write(metrices)
 
 
     # forest = np.where(pred_unpadded < 0.5, 1, 0)
@@ -607,7 +595,7 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None):
     # pim = Image.fromarray(pred_labels)
     # pim.convert('RGB').save("./R1_pred_test.png")
 
-    # return metrices
+    return
 
 if __name__ == "__main__":
     TEST_REGION = "1"

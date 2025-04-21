@@ -1,27 +1,8 @@
 from flask import jsonify, Flask, send_file, request, make_response
-from werkzeug.utils import secure_filename
 import os
-from PIL import Image
-import gzip
 import numpy as np
 from flask_cors import CORS
-
-# from vtkmodules.all import (
-#     vtkTIFFReader,
-#     vtkImageExtractComponents
-# )
-
-import cv2
-import gc
-# from vtkmodules.util.numpy_support import vtk_to_numpy
-import json
-import subprocess, sys
-
-# from topologytoolkit import (
-#     ttkFTMTree,
-#     ttkTopologicalSimplificationByPersistence,
-#     ttkScalarFieldSmoother
-# )
+import subprocess
 
 from al import train, run_prediction
 
@@ -34,40 +15,20 @@ APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 target = os.path.join(APP_ROOT, app.config["UPLOAD_FOLDER"])
 
 
-# extractComponent = vtkImageExtractComponents()
-# extractComponent.SetInputConnection(pread.GetOutputPort())
-# extractComponent.SetComponents(0)
-# extractComponent.Update()
-
-# smoother = ttkScalarFieldSmoother()
-# smoother.SetInputConnection(0, pread.GetOutputPort())
-# smoother.SetInputArrayToProcess(0, 0, 0, 0, "Tiff Scalars")
-# smoother.SetNumberOfIterations(5)
-# smoother.Update()
-
-# simplify = ttkTopologicalSimplificationByPersistence()
-# simplify.SetInputConnection(0, smoother.GetOutputPort())
-# simplify.SetInputArrayToProcess(0, 0, 0, 0, "Tiff Scalars")
-# simplify.SetThresholdIsAbsolute(False)
-# simplify.SetPersistenceThreshold(50)
-# simplify.Update()
-
-# tree = ttkFTMTree()
-# tree.SetInputConnection(0, simplify.GetOutputPort())
-# tree.SetInputArrayToProcess(0, 0, 0, 0, "Tiff Scalars")
-# tree.SetTreeType(2)
-# tree.SetWithSegmentation(1)
-# tree.Update()
-
 @app.route('/stl', methods=['POST'])
 def stl():
     TEST_REGION = int(request.args.get('testRegion', 1))
     print("TEST_REGION: ", TEST_REGION)
     if request.method == 'POST':
         f = request.files['file']
-        # f.save(f.filename)
-        # subprocess.check_output(['./hmm', f.filename, f'./stl/Region_{TEST_REGION}.stl', '-z', '500', '-t', '10000000'])
-        payload = make_response(send_file(f'./stl/Region_{TEST_REGION}.stl'))
+        f.save(f.filename)
+
+        base_path = "/Users/saugat/IU/Classes/Spring 25/B657_CV/project/burn_scars_AL/backend_code/"
+        hmm_path = os.path.join(base_path, "hmm")
+        stl_path = os.path.join(base_path, f"stl/Region_{TEST_REGION}.stl")
+        subprocess.check_output([hmm_path, f.filename, stl_path, '-z', '500', '-t', '10000000'])
+        print("testRegion: ", TEST_REGION)
+        payload = make_response(send_file(stl_path))
         payload.headers.add('Access-Control-Allow-Origin', '*')
         # os.remove('a.stl')
         # os.remove(f.filename)
@@ -75,7 +36,7 @@ def stl():
         return payload
 
 
-@app.route('/pred')
+@app.route('/pred', methods=['GET'])
 def pred():
     student_id = request.args.get('taskId')
     predict = int(request.args.get('predict', 0))
@@ -111,6 +72,14 @@ def retrain():
 
     if not os.path.exists(f"./users/{student_id}/output"):
         os.mkdir(f"./users/{student_id}/output")
+    
+    # read cycle from txt file
+    try:
+        with open(f"./users/{student_id}/al_cycles/R{TEST_REGION}.txt", 'r') as fp:
+            content = fp.read()
+            al_cycle = int(content) 
+    except FileNotFoundError:
+        al_cycle = 0
 
     if file:
         print('image is here')
@@ -119,7 +88,7 @@ def retrain():
         # Process the file as needed, for example, save it to the server
         file.save(f'./users/{student_id}/output/R{TEST_REGION}_labels.png')
 
-        train(TEST_REGION, student_id)
+        train(TEST_REGION, student_id, al_cycle)
 
         payload = make_response(jsonify({'status': 'success', 'taskId': student_id}), 200)
         payload.headers.add('Access-Control-Allow-Origin', '*')
@@ -155,66 +124,6 @@ def check_status():
 
     return payload
 
-
-
-# @app.route('/topology', methods=['POST'])
-# def topology():
-#     if request.method == 'POST':
-#         f = request.files['file']
-#         f.save(f.filename)
-#         pread = vtkTIFFReader()
-#         pread.SetFileName(f.filename)
-#         extractComponent = vtkImageExtractComponents()
-#         extractComponent.SetInputConnection(pread.GetOutputPort())
-#         extractComponent.SetComponents(0)
-#         extractComponent.Update()
-#         simplify = ttkTopologicalSimplificationByPersistence()
-#         simplify.SetInputConnection(0, extractComponent.GetOutputPort())
-#         simplify.SetInputArrayToProcess(0, 0, 0, 0, "Tiff Scalars")
-#         simplify.SetThresholdIsAbsolute(False)
-#         tree = ttkFTMTree()
-#         tree.SetInputConnection(0, simplify.GetOutputPort())
-#         tree.SetInputArrayToProcess(0, 0, 0, 0, "Tiff Scalars")
-#         tree.SetTreeType(2)
-#         tree.SetWithSegmentation(1)
-#         response = {'data': {}, 'segmentation': {}}
-#         dmax = 1
-#         dmin = 0
-#         for i in [0, 0.02, 0.04, 0.08, 0.16, 0.32]:
-#             simplify.SetPersistenceThreshold(i)
-#             simplify.Update()
-#             tree.Update()
-#             if i == 0:
-#                 dmax = np.max(vtk_to_numpy(simplify.GetOutput().GetPointData().GetArray(0)))
-#                 dmin = np.min(vtk_to_numpy(simplify.GetOutput().GetPointData().GetArray(0)))
-#                 response['data'][i] = ((vtk_to_numpy(simplify.GetOutput().GetPointData().GetArray(0)) - dmin) / (dmax - dmin)).tolist()
-#             else:
-#                 response['data'][i] = (vtk_to_numpy(simplify.GetOutput().GetPointData().GetArray(0))).tolist()
-#             response['segmentation'][i] = vtk_to_numpy(tree.GetOutput(2).GetPointData().GetArray(2)).tolist()
-#         content = gzip.compress(json.dumps(response).encode('utf8'), 9)
-#         payload = make_response(content)
-#         payload.headers.add('Access-Control-Allow-Origin', '*')
-#         payload.headers['Content-length'] = len(content)
-#         payload.headers['Content-Encoding'] = 'gzip'
-#         del(response)
-#         os.remove(f.filename)
-#         return payload
-    
-# @app.route('/test', methods=['POST'])
-# def test():
-#     response = {"success": "success"}
-#     # ranges = [0.02, 0.04, 0.06, 0.08, 0.1]
-#     # ranges = [0.02]
-#     # for i in ranges:
-#     #     simplify.SetPersistenceThreshold(i)
-#     #     simplify.Update()
-#     #     tree.Update()
-#     #     test = vtk_to_numpy(tree.GetOutput(2).GetPointData().GetArray(2))
-#     #     response[i] = {'array': test.tolist(), "max": int(np.max(test))}
-#     #     del test
-#     payload = jsonify(response)
-#     payload.headers.add('Access-Control-Allow-Origin', '*')
-#     return payload
     
 if __name__ == '__main__':
    app.run()

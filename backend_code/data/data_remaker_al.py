@@ -114,7 +114,7 @@ def crop_data_augment(uncropped_data, filename, horizontal_patches, vertical_pat
     # base_path = "./data_al/"
     # output_path = "./cropped_al"
 
-    output_path = os.path.join(os.getcwd(), "data_al/cropped_al")
+    output_path = os.path.join(os.getcwd(), "data/cropped_al")
     print(output_path)
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -138,10 +138,6 @@ def crop_data_augment(uncropped_data, filename, horizontal_patches, vertical_pat
             
             if is_feature:
                 new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
-            elif is_conf:
-                new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label_conf.npy"
-            elif is_forest:
-                new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
             else:
                 new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
             
@@ -187,10 +183,6 @@ def crop_data(uncropped_data, region_num, is_feature = False, is_conf = False, i
 
             if is_feature:
                 new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
-            elif is_conf:
-                new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_label_conf.npy"
-            elif is_forest:
-                new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
             else:
                 new_name = f"Region_{region_num}"+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
             
@@ -209,7 +201,7 @@ def crop_data(uncropped_data, region_num, is_feature = False, is_conf = False, i
             np.save(os.path.join(output_path, new_name), patch)
 
 def crop_data_al(uncropped_data, filename, TEST_REGION, is_feature = False, is_conf = False, is_forest = False):
-    base_path = "./data_al/"
+    base_path = "./data/"
     output_path = base_path + "cropped_al"
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -239,10 +231,6 @@ def crop_data_al(uncropped_data, filename, TEST_REGION, is_feature = False, is_c
             
             if is_feature:
                 new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
-            elif is_conf:
-                new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label_conf.npy"
-            elif is_forest:
-                new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
             else:
                 new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
             
@@ -262,13 +250,13 @@ def crop_data_al(uncropped_data, filename, TEST_REGION, is_feature = False, is_c
 
             
 def make_data(label_data, region_num):
-    label_file = f"Region_{region_num}_label_forest.npy"
+    label_file = f"Region_{region_num}_label.npy"
 
     ###########Padd data to fit SPATIAL_SIZE pathches######################################
     padded_label, hor_patches, ver_patches = pad_data_augment(label_data)
 
     ###########Crop data to SPATIAL_SIZE pathches######################################
-    cropped_label = crop_data_augment(padded_label, label_file, hor_patches, ver_patches, region_num, is_forest=True)
+    cropped_label = crop_data_augment(padded_label, label_file, hor_patches, ver_patches, region_num)
 
 
 def make_dir(TEST_REGION):
@@ -284,7 +272,7 @@ def make_dir(TEST_REGION):
 def move_files(TEST_REGION):
     # base_path = "./data_al/"
 
-    base_path = os.path.join(os.getcwd(), "data_al/")
+    base_path = os.path.join(os.getcwd(), "data/")
     
     for file in tqdm(os.listdir(base_path + "cropped_al")):
         if not "label_forest" in file:

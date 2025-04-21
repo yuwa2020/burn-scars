@@ -1,4 +1,3 @@
-import torch
 import os
 import re
 import numpy as np
@@ -13,6 +12,8 @@ from config import *
 import shutil
 
 from tqdm import tqdm
+
+BASE_PATH = "/Users/yudai/Documents/iu-coding/hmm/burn_scars_AL_code/backend_code/data"
 
 def pad_data(unpadded_data, is_feature = False):
     
@@ -137,7 +138,7 @@ def pad_data_augment(unpadded_data, is_feature = False):
 def crop_data_augment(uncropped_data, filename, horizontal_patches, vertial_patches, TEST_REGION, is_feature = False, is_conf = False, is_forest = False):
 
     # base_path = "./data_al/"
-    output_path = "./cropped_al"
+    output_path = f"{BASE_PATH}/cropped_al"
     if not os.path.exists(output_path):
         os.mkdir(output_path)
     
@@ -160,10 +161,6 @@ def crop_data_augment(uncropped_data, filename, horizontal_patches, vertial_patc
             
             if is_feature:
                 new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
-            elif is_conf:
-                new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label_conf.npy"
-            elif is_forest:
-                new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
             else:
                 new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
             
@@ -183,7 +180,7 @@ def crop_data_augment(uncropped_data, filename, horizontal_patches, vertial_patc
 
 def crop_data(uncropped_data, filename, TEST_REGION, is_feature = False):
     
-    output_path = "./cropped_al"
+    output_path = f"{BASE_PATH}/cropped_al"
     if not os.path.exists(output_path):
         os.mkdir(output_path)
     
@@ -208,7 +205,7 @@ def crop_data(uncropped_data, filename, TEST_REGION, is_feature = False):
             if is_feature:
                 new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_features.npy"
             else:
-                new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label_forest.npy"
+                new_name = f"Region_{TEST_REGION}"+"_y_"+str(y)+"_x_"+str(x)+"_label.npy"
             
             # print("new_name: ", new_name)
             
@@ -224,39 +221,6 @@ def crop_data(uncropped_data, filename, TEST_REGION, is_feature = False):
             
             np.save(os.path.join(output_path, new_name), patch)
 
-def count_to_ratio(label_data):
-    #print("label_data: ", label_data.shape)
-    
-    total_count = np.sum(label_data, axis = -1, keepdims = True)
-    #print("total_count: ", total_count.shape)
-    
-    max_count_idx = np.expand_dims(np.argmax(label_data, axis=-1), axis =-1)
-    #print("max_count_idx: ", max_count_idx.shape)
-    
-    flood_mask = np.where(max_count_idx == 0, 1, 0)
-    dry_mask = np.where(max_count_idx == 1, 1, 0)
-    #print("flood_mask: ", flood_mask.shape)
-    
-    flood_count, dry_count = np.split(label_data, 2, axis = -1)
-    #print("flood_count: ", flood_count.shape)
-    
-    flood_count_masked = flood_count*flood_mask
-    dry_count_masked = -dry_count*dry_mask
-    #print("flood_count_masked: ", flood_count_masked.shape)
-
-    merged_count = flood_count_masked+dry_count_masked
-    #print("merged_count: ", merged_count.shape)
-    
-    label_data_ratio = merged_count/total_count
-    label_data_ratio = np.squeeze(label_data_ratio, axis = -1)
-    
-    ## Remove NaN cause by 0/total count
-    label_data_ratio = np.nan_to_num(label_data_ratio, nan=0.0)
-    #print("label_data_ratio: ", label_data_ratio.shape)
-    
-    
-    return label_data_ratio
-
 
 def make_data(feature_files, feature_data_path, label_data_path, TEST_REGION):
     
@@ -271,13 +235,22 @@ def make_data(feature_files, feature_data_path, label_data_path, TEST_REGION):
             # print("feature_data.shape: ", feature_data.shape)
 
             ## Load label data:
-            label_file = f"Region_{TEST_REGION}_forest.npy"
+            label_file = f"Region_{TEST_REGION}_label.npy"
             # print(label_file)
+
+            if feature_data.shape[0] == 3:
+                height, width = feature_data.shape[1], feature_data.shape[2]
+                feature_data = np.rollaxis(feature_data, 0, 3)
+            else:
+                height, width = feature_data.shape[0], feature_data.shape[1]
+
+            print(f"original height {height}, original width {width}")
 
             try:
                 label_data = np.load(os.path.join(label_data_path, label_file))
-            except:
-                print(f"No such files as {label_file}")
+            except FileNotFoundError:
+                print("GT labels not found, initializing to zero")
+                label_data = np.zeros((height, width))
                 
             ###########Padd data to fit SPATIAL_SIZE pathches######################################
             padded_feature, hor_patches, ver_patches = pad_data_augment(feature_data, is_feature = True)
@@ -289,9 +262,9 @@ def make_data(feature_files, feature_data_path, label_data_path, TEST_REGION):
 
 
 def make_dir(TEST_REGION):
-    if not os.path.exists(f"./Region_{TEST_REGION}_TEST"):
-        os.mkdir(f"./Region_{TEST_REGION}_TEST")
-        os.mkdir(f"./Region_{TEST_REGION}_TEST/cropped_data_val_test_al")
+    if not os.path.exists(f"{BASE_PATH}/Region_{TEST_REGION}_TEST"):
+        os.mkdir(f"{BASE_PATH}/Region_{TEST_REGION}_TEST")
+        os.mkdir(f"{BASE_PATH}/Region_{TEST_REGION}_TEST/cropped_data_val_test_al")
     
     # if not os.path.exists(f"/data/user/saugat/active_learning/EvaNet/EvAL/data_al/Region_{TEST_REGION}_TEST"):
     #     os.mkdir(f"/data/user/saugat/active_learning/EvaNet/EvAL/data_al/Region_{TEST_REGION}_TEST")
@@ -301,25 +274,27 @@ def make_dir(TEST_REGION):
 def move_files(TEST_REGION):
     
     # for file in tqdm(os.listdir("/data/user/saugat/active_learning/EvaNet/EvAL/data_al/cropped_al")):
-    for file in tqdm(os.listdir("./cropped_al")):
+    for file in tqdm(os.listdir(f"{BASE_PATH}/cropped_al")):
+        if not file.endswith(".npy"):
+            continue
         file_region_num = int(file.split("_")[1])
         ## print("file_region_num: ", file_region_num)
         # source = os.path.join("/data/user/saugat/active_learning/EvaNet/EvAL/data_al/cropped_al", file)
-        source = os.path.join("./cropped_al", file)
+        source = os.path.join(f"{BASE_PATH}/cropped_al", file)
         ## print("source: ", source)
         
         # destination = os.path.join(f"/data/user/saugat/active_learning/EvaNet/EvAL/data_al/Region_{TEST_REGION}_TEST/cropped_data_val_test_al", file)
-        destination = os.path.join(f"./Region_{TEST_REGION}_TEST/cropped_data_val_test_al", file)
+        destination = os.path.join(f"{BASE_PATH}/Region_{TEST_REGION}_TEST/cropped_data_val_test_al", file)
         shutil.move(source, destination)
 
 def main(TEST_REGION):
     
     # feature_data_path = "/data/user/saugat/active_learning/EvaNet/EvAL/data_al/repo/Features_7_Channels"
-    feature_data_path = "./repo/Features_7_Channels"
+    feature_data_path = f"{BASE_PATH}/repo/images"
     data_files = os.listdir(feature_data_path)
     
     # label_data_path = "/data/user/saugat/active_learning/EvaNet/EvAL/data_al/repo/groundTruths"
-    label_data_path = "./repo/groundTruths"
+    label_data_path = f"{BASE_PATH}/repo/groundTruths"
 
     ## only keep .npy file
     feature_files = [file for file in data_files if file.endswith(".npy") ]
@@ -336,8 +311,8 @@ def main(TEST_REGION):
 if __name__ == "__main__":
     # TEST_REGION = 2
 
-    TEST_REGIONS = [1, 2, 3, 6, 9]
-    TEST_REGIONS = [10, 11, 12]
+    # TEST_REGIONS = [1, 2, 3, 6, 9]
+    TEST_REGIONS = [3001]
 
     for TEST_REGION in TEST_REGIONS:
         main(TEST_REGION)

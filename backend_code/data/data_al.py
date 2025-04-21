@@ -30,6 +30,8 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
         self.transforms = transforms
         
         self.feature_files = os.listdir(data_path)
+        # print(self.data_path)
+        # print(self.feature_files)
         self.feature_files = [file for file in self.feature_files if file.endswith(".npy") and re.match(".*features.*", file) ]
         
         self.data_len = len(self.feature_files)
@@ -69,12 +71,7 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
         
         
         ## Seperate elevation data from RGB
-        self.disaster_rgb = self.feature_data[:,:, :3].astype('uint8')
-        self.elev_data = self.feature_data[:,:, 3].astype('float32')
-        self.elev_data = np.expand_dims(self.elev_data, 0).astype('float32')
-        # print("self.elev_data: ", self.elev_data.shape)
-        self.regular_rgb = self.feature_data[:,:, 4:].astype('uint8')
-        
+        self.rgb_data = self.feature_data[:,:, :3].astype('uint8')
         
         ## Format labels for Loss function
         """
@@ -87,24 +84,15 @@ class ElevationDatasetAL(torch.utils.data.Dataset):
 #         self.dry = np.where(self.label_data == 0, -1, 0).astype('int')
         self.formatted_label_data = np.where(self.label_data == -1, 2, self.label_data).astype('int')
         
-        ## Normalize to elev_data
-        self.norm_elev_data = self.normalize(self.elev_data)
-        self.norm_elev_data = np.rollaxis(self.norm_elev_data, 0, 3)
-        
 #         print(self.disaster_rgb.shape, self.norm_elev_data.shape, self.regular_rgb.shape)
         
-#         self.rgb_data = self.disaster_rgb
-        self.rgb_data = np.concatenate((self.disaster_rgb, self.norm_elev_data, self.regular_rgb), axis = -1)
-        
         ## Apply torchvision tranforms to rgb data
-        self.transformed_rbg = self.transforms(self.rgb_data)
+        self.transformed_rgb = self.transforms(self.rgb_data)
         
         
         ## Put all data in one dictionary
         self.data_dict['filename'] = self.feature_file
-        self.data_dict['rgb_data'] = self.transformed_rbg
-        self.data_dict['elev_data'] = self.elev_data
-        self.data_dict['norm_elev_data'] = self.norm_elev_data
+        self.data_dict['rgb_data'] = self.transformed_rgb
         self.data_dict['labels'] = self.formatted_label_data
         
         return self.data_dict
@@ -120,8 +108,8 @@ def get_dataset_al(cropped_data_path):
     training_transforms = []
     training_transforms += [transforms.ToTensor()]
     
-    training_transforms += [torchvision.transforms.Normalize((0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5),
-                                                             (0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5))]
+    training_transforms += [torchvision.transforms.Normalize((0.5, 0.5, 0.5),
+                                                             (0.5, 0.5, 0.5))]
     
     data_transforms = transforms.Compose(training_transforms)
     

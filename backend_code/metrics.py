@@ -15,17 +15,17 @@ class Evaluator():
     def __init__(self):
 
         # Declare Metrics
-        self.DRY_ACC = 0
-        self.FLOOD_ACC = 0
+        self.NOT_BURN_SCAR_ACC = 0
+        self.BURN_SCAR_ACC = 0
         
-        self.DRY_PRECISION = 0
-        self.FLOOD_PRECISION = 0
+        self.NOT_BURN_SCAR_PRECISION = 0
+        self.BURN_SCAR_PRECISION = 0
         
-        self.DRY_RECALL = 0
-        self.FLOOD_RECALL = 0
+        self.NOT_BURN_SCAR_RECALL = 0
+        self.BURN_SCAR_RECALL = 0
         
-        self.DRY_FSCORE = 0
-        self.FLOOD_FSCORE = 0
+        self.NOT_BURN_SCAR_FSCORE = 0
+        self.BURN_SCAR_FSCORE = 0
     
     def run_eval(self, pred_unpadded, gt_labels):
         
@@ -43,57 +43,88 @@ class Evaluator():
         
         
         ####DRY
-        self.DRY_ACC = ((TP_0+TN_0)/(TP_0+TN_0+FP_0+FN_0))*100
-        print("Dry Accuracy: ", self.DRY_ACC)
-        self.DRY_PRECISION = ((TP_0)/(TP_0+FP_0))*100
-        print("Dry Precision: ", self.DRY_PRECISION)
-        self.DRY_RECALL = ((TP_0)/(TP_0+FN_0))*100
-        print("Dry Recall: ", self.DRY_RECALL)
-        self.DRY_FSCORE = ((2*self.DRY_PRECISION*self.DRY_RECALL)/(self.DRY_PRECISION+self.DRY_RECALL))
-        print("Dry F-score: ", self.DRY_FSCORE)
+        self.NOT_BURN_SCAR_ACC = ((TP_0+TN_0)/(TP_0+TN_0+FP_0+FN_0))*100
+        print("NOT_BURN_SCAR Accuracy: ", self.NOT_BURN_SCAR_ACC)
+        self.NOT_BURN_SCAR_PRECISION = ((TP_0)/(TP_0+FP_0))*100
+        print("NOT_BURN_SCAR Precision: ", self.NOT_BURN_SCAR_PRECISION)
+        self.NOT_BURN_SCAR_RECALL = ((TP_0)/(TP_0+FN_0))*100
+        print("NOT_BURN_SCAR Recall: ", self.NOT_BURN_SCAR_RECALL)
+        self.NOT_BURN_SCAR_FSCORE = ((2*self.NOT_BURN_SCAR_PRECISION*self.NOT_BURN_SCAR_RECALL)/(self.NOT_BURN_SCAR_PRECISION+self.NOT_BURN_SCAR_RECALL))
+        print("NOT_BURN_SCAR F-score: ", self.NOT_BURN_SCAR_FSCORE)
         
         print("\n")
         
         ####FLOOD
-        self.FLOOD_ACC = ((TP_1+TN_1)/(TP_1+TN_1+FP_1+FN_1))*100
-        print("Flood Accuracy: ", self.FLOOD_ACC)
-        self.FLOOD_PRECISION = ((TP_1)/(TP_1+FP_1))*100
-        print("Flood Precision: ", self.FLOOD_PRECISION)
-        self.FLOOD_RECALL = ((TP_1)/(TP_1+FN_1))*100
-        print("Flood Recall: ", self.FLOOD_RECALL)
-        self.FLOOD_FSCORE = ((2*self.FLOOD_PRECISION*self.FLOOD_RECALL)/(self.FLOOD_PRECISION+self.FLOOD_RECALL))
-        print("Flood F-score: ", self.FLOOD_FSCORE)
+        self.BURN_SCAR_ACC = ((TP_1+TN_1)/(TP_1+TN_1+FP_1+FN_1))*100
+        print("BURN_SCAR Accuracy: ", self.BURN_SCAR_ACC)
+        self.BURN_SCAR_PRECISION = ((TP_1)/(TP_1+FP_1))*100
+        print("BURN_SCAR Precision: ", self.BURN_SCAR_PRECISION)
+        self.BURN_SCAR_RECALL = ((TP_1)/(TP_1+FN_1))*100
+        print("BURN_SCAR Recall: ", self.BURN_SCAR_RECALL)
+        self.BURN_SCAR_FSCORE = ((2*self.BURN_SCAR_PRECISION*self.BURN_SCAR_RECALL)/(self.BURN_SCAR_PRECISION+self.BURN_SCAR_RECALL))
+        print("BURN_SCAR F-score: ", self.BURN_SCAR_FSCORE)
+
+        not_burn_scar_acc = float("{:.2f}".format(self.NOT_BURN_SCAR_ACC))
+        not_burn_scar_precision = float("{:.2f}".format(self.NOT_BURN_SCAR_PRECISION))
+        not_burn_scar_recall = float("{:.2f}".format(self.NOT_BURN_SCAR_RECALL))
+        not_burn_scar_f1 = float("{:.2f}".format(self.NOT_BURN_SCAR_FSCORE))
+        # dry_iou = float("{:.2f}".format(self.DRY_IOU))
+
+        burn_scar_precision = float("{:.2f}".format(self.BURN_SCAR_PRECISION))
+        burn_scar_recall = float("{:.2f}".format(self.BURN_SCAR_RECALL))
+        burn_scar_f1 = float("{:.2f}".format(self.BURN_SCAR_FSCORE))
+        # flood_iou = float("{:.2f}".format(self.FLOOD_IOU))
+
+        metrices_str = "   Metrics (Unit: %)    "
+        metrices_str += "\n\n"
+        metrices_str += f"Accuracy         : {not_burn_scar_acc}"
+        metrices_str += "\n\n"
+        metrices_str += f"NOT_BURN_SCAR Precision    : {not_burn_scar_precision}"
+        metrices_str += "\n"
+        metrices_str += f"NOT_BURN_SCAR Recall       : {not_burn_scar_recall}"
+        metrices_str += "\n"
+        metrices_str += f"NOT_BURN_SCAR F1 score     : {not_burn_scar_f1}"
+        # metrices_str += "\n"
+        # metrices_str += f"Dry IOU          : {dry_iou}"
+        metrices_str += "\n\n"
+        metrices_str += f"BURN_SCAR Precision  : {burn_scar_precision}"
+        metrices_str += "\n"
+        metrices_str += f"BURN_SCAR Recall     : {burn_scar_recall}"
+        metrices_str += "\n"
+        metrices_str += f"BURN_SCAR F1 score   : {burn_scar_f1}"
+
+        return metrices_str
 
         
     
     
     @property
     def f_accuracy(self):        
-        if self.FLOOD_ACC > 0:
-            return self.FLOOD_ACC
+        if self.BURN_SCAR_ACC > 0:
+            return self.BURN_SCAR_ACC
         else:
             return 0.0
 
     @property
     def f_precision(self):        
-        if self.FLOOD_PRECISION > 0:
-            return self.FLOOD_PRECISION
+        if self.BURN_SCAR_PRECISION > 0:
+            return self.BURN_SCAR_PRECISION
         else:
             return 0.0
 
  
     @property
     def f_recall(self):
-        if self.FLOOD_RECALL > 0:
-            return self.FLOOD_RECALL
+        if self.BURN_SCAR_RECALL > 0:
+            return self.BURN_SCAR_RECALL
         else:
             return 0.0
         
         
     @property
     def f_fscore(self):
-        if self.FLOOD_FSCORE > 0:
-            return self.FLOOD_FSCORE
+        if self.BURN_SCAR_FSCORE > 0:
+            return self.BURN_SCAR_FSCORE
         else:
             return 0.0
     
@@ -102,30 +133,30 @@ class Evaluator():
     
     @property
     def d_accuracy(self):        
-        if self.DRY_ACC > 0:
-            return self.DRY_ACC
+        if self.NOT_BURN_SCAR_ACC > 0:
+            return self.NOT_BURN_SCAR_ACC
         else:
             return 0.0
     
     @property
     def d_precision(self):        
-        if self.DRY_PRECISION > 0:
-            return self.DRY_PRECISION
+        if self.NOT_BURN_SCAR_PRECISION > 0:
+            return self.NOT_BURN_SCAR_PRECISION
         else:
             return 0.0
 
  
     @property
     def d_recall(self):
-        if self.DRY_RECALL > 0:
-            return self.DRY_RECALL
+        if self.NOT_BURN_SCAR_RECALL > 0:
+            return self.NOT_BURN_SCAR_RECALL
         else:
             return 0.0
         
         
     @property
     def d_fscore(self):
-        if self.DRY_FSCORE > 0:
-            return self.DRY_FSCORE
+        if self.NOT_BURN_SCAR_FSCORE > 0:
+            return self.NOT_BURN_SCAR_FSCORE
         else:
             return 0.0
