@@ -3,6 +3,9 @@ import os
 import numpy as np
 from flask_cors import CORS
 import subprocess
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 from al import train, run_prediction
 
@@ -23,7 +26,10 @@ def stl():
         f = request.files['file']
         f.save(f.filename)
 
-        base_path = "/Users/yudai/Documents/iu-coding/hmm/burn_scars_AL_code/backend_code/"
+        base_dir = os.getenv("BASE_DIR")
+        base_path = os.path.join(base_dir, "backend_code")
+        
+        # base_path = "/Users/yudai/Documents/iu-coding/hmm/burn_scars_AL_code/backend_code/"
         hmm_path = os.path.join(base_path, "hmm")
         stl_path = os.path.join(base_path, f"stl/Region_{TEST_REGION}.stl")
         subprocess.check_output([hmm_path, f.filename, stl_path, '-z', '500', '-t', '10000000'])
