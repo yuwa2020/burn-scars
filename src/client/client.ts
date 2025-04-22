@@ -278,11 +278,17 @@ async function retrainSession(event: Event) {
     console.log("Retrain session")
 
     var dataURL = labelsCanvas.toDataURL()
+    var dataURL_2 = predCanvas.toDataURL()
 
     // Create a FormData object and append the image data
     var formData = new FormData();
     const dataURLFile = dataURItoBlob(dataURL);
+
+    var formData_2 = new FormData();
+    const dataURLFile_2 = dataURItoBlob(dataURL_2);
+
     formData.append('image', dataURLFile);
+    formData.append('image_2', dataURLFile_2);
 
     const taskId = encodeURIComponent(sessionData.name);
     const testRegion = encodeURIComponent(sessionData.testRegion);

@@ -27,6 +27,8 @@ from collections import defaultdict
 from PIL import Image
 from torch.utils.data import DataLoader
 
+from copy import copy
+
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(DEVICE)
 
@@ -369,7 +371,21 @@ def train(TEST_REGION, student_id, al_cycle):
     print(f"Resuming from epoch {resume_epoch}")
     
 
-    updated_labels = ann_to_labels(f'./users/{student_id}/output/R{TEST_REGION}_labels.png')
+    updated_labels_orig = ann_to_labels(f'./users/{student_id}/output/R{TEST_REGION}_labels.png')
+    new_labels = ann_to_labels(f'./users/{student_id}/output/R{TEST_REGION}_pred_label.png')
+
+    merged = np.where((updated_labels_orig == -1), new_labels, updated_labels_orig)
+    # print(merged)
+    updated_labels = merged
+
+    merged_copy = copy(merged)
+    merged_copy = merged_copy.astype("float32")
+    merged_copy_new = np.where(merged_copy == -1, 0, merged_copy)
+    new_arr_2 = np.zeros((merged_copy_new.shape[0], merged_copy_new.shape[1], 3), dtype=np.uint8)
+    new_arr_2[:,:,1] = merged_copy_new*128
+
+    plt.imsave(f'./users/{student_id}/output/R{TEST_REGION}_NEW_LABELS.png', new_arr_2)
+
     np.save(f"R_{TEST_REGION}_updated_labels.npy", updated_labels)
 
     # need to remake labels after getting updated labels
@@ -450,11 +466,11 @@ def train(TEST_REGION, student_id, al_cycle):
         file.write(str(al_cycle + 1))
     
     # call AL pipeline once the model is retrained
-    run_prediction(TEST_REGION, student_id, updated_labels = updated_labels, al_cycle=al_cycle+1)
+    run_prediction(TEST_REGION, student_id, updated_labels = updated_labels, updated_labels_orig=updated_labels_orig,  al_cycle=al_cycle+1)
     
     return
 
-def run_prediction(TEST_REGION, student_id, updated_labels = None, al_cycle=0):
+def run_prediction(TEST_REGION, student_id, updated_labels = None, updated_labels_orig=None, al_cycle=0):
 
     if not os.path.exists(f"./users/{student_id}"):
         os.mkdir(f"./users/{student_id}")
@@ -568,8 +584,11 @@ def run_prediction(TEST_REGION, student_id, updated_labels = None, al_cycle=0):
     if updated_labels is None:
         updated_labels = np.full((height, width), -1)
 
-    annotated_pixels = np.where(updated_labels != -1, 1, 0)
-    annotated_pixels_percent = (np.sum(annotated_pixels) / (updated_labels.shape[0] * updated_labels.shape[1])) * 100
+    if updated_labels_orig is None:
+        updated_labels_orig = np.full((height, width), -1)
+
+    annotated_pixels = np.where(updated_labels_orig != -1, 1, 0)
+    annotated_pixels_percent = (np.sum(annotated_pixels) / (updated_labels_orig.shape[0] * updated_labels_orig.shape[1])) * 100
     print("Ann pixels percent: ", annotated_pixels_percent)
 
     annotated_pixels_percent = float("{:.2f}".format(annotated_pixels_percent))

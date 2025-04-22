@@ -23,7 +23,7 @@ def stl():
         f = request.files['file']
         f.save(f.filename)
 
-        base_path = "/Users/saugat/IU/Classes/Spring 25/B657_CV/project/burn_scars_AL/backend_code/"
+        base_path = "/Users/yudai/Documents/iu-coding/hmm/burn_scars_AL_code/backend_code/"
         hmm_path = os.path.join(base_path, "hmm")
         stl_path = os.path.join(base_path, f"stl/Region_{TEST_REGION}.stl")
         subprocess.check_output([hmm_path, f.filename, stl_path, '-z', '500', '-t', '10000000'])
@@ -65,6 +65,7 @@ def pred():
 def retrain():
     student_id = request.args.get('taskId')
     file = request.files.get('image')
+    file_2 = request.files.get('image_2')
     TEST_REGION = int(request.args.get('testRegion', 1))
 
     if not os.path.exists(f"./users/{student_id}"):
@@ -81,12 +82,14 @@ def retrain():
     except FileNotFoundError:
         al_cycle = 0
 
-    if file:
-        print('image is here')
+    if file and file_2:
+        print('images are here')
         # file = request.files['image']
 
         # Process the file as needed, for example, save it to the server
         file.save(f'./users/{student_id}/output/R{TEST_REGION}_labels.png')
+
+        file_2.save(f'./users/{student_id}/output/R{TEST_REGION}_pred_label.png')
 
         train(TEST_REGION, student_id, al_cycle)
 
