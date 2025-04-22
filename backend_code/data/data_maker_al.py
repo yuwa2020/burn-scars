@@ -13,7 +13,13 @@ import shutil
 
 from tqdm import tqdm
 
-BASE_PATH = "/Users/yudai/Documents/iu-coding/hmm/burn_scars_AL_code/backend_code/data"
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+base_dir = os.getenv("BASE_DIR")
+
+BASE_PATH = os.path.join(base_dir, "backend_code/data")
 
 def pad_data(unpadded_data, is_feature = False):
     
@@ -312,7 +318,9 @@ if __name__ == "__main__":
     # TEST_REGION = 2
 
     # TEST_REGIONS = [1, 2, 3, 6, 9]
-    TEST_REGIONS = [3001]
+    test_region = int(os.getenv("TEST_REGIONS"))
+    TEST_REGIONS = [test_region]
+    # TEST_REGIONS = [3001]
 
     for TEST_REGION in TEST_REGIONS:
         main(TEST_REGION)
